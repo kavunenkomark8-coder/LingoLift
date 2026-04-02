@@ -117,6 +117,13 @@ export function getCards() {
   return cards;
 }
 
+/** Case-insensitive match on trimmed word (Portuguese-friendly locale). */
+export function isWordAlreadyInDeck(word) {
+  const key = word.trim().toLocaleLowerCase('pt');
+  if (!key) return false;
+  return getCards().some((c) => c.word.trim().toLocaleLowerCase('pt') === key);
+}
+
 async function ensureClient() {
   if (!supabase) {
     supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -306,13 +313,18 @@ export async function initDataStore(opts) {
   await refreshFromRemote();
 }
 
+/** @returns {Promise<Card | null>} null if duplicate word (case-insensitive). */
 export async function addCard(word, translation) {
+  const w = word.trim();
+  const t = translation.trim();
+  if (isWordAlreadyInDeck(w)) return null;
+
   const id = crypto.randomUUID();
   const next_review = new Date().toISOString();
   const card = {
     id,
-    word,
-    translation,
+    word: w,
+    translation: t,
     nextReview: Date.now(),
   };
 
@@ -321,7 +333,7 @@ export async function addCard(word, translation) {
 
   if (!navigator.onLine) {
     const box = readOutbox();
-    box.push({ op: 'insert', id, word, translation, next_review });
+    box.push({ op: 'insert', id, word: w, translation: t, next_review });
     writeOutbox(box);
     setSyncState('offline');
     return card;
@@ -333,8 +345,8 @@ export async function addCard(word, translation) {
     const { error } = await client.from('cards').insert({
       id,
       user_id: userId,
-      word,
-      translation,
+      word: w,
+      translation: t,
       next_review,
     });
     if (error) throw error;
@@ -343,7 +355,7 @@ export async function addCard(word, translation) {
   } catch (e) {
     console.error(e);
     const box = readOutbox();
-    box.push({ op: 'insert', id, word, translation, next_review });
+    box.push({ op: 'insert', id, word: w, translation: t, next_review });
     writeOutbox(box);
     setSyncState('error');
     return card;

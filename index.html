@@ -35,6 +35,16 @@
       <p id="sync-status" class="sync-status" role="status"></p>
     </header>
 
+    <details class="panel howto-panel">
+      <summary class="howto-summary">How to use</summary>
+      <ul class="howto-list">
+        <li>Add words in <strong>Portuguese</strong> and their translation.</li>
+        <li>Click <strong>Start review</strong> for spaced repetition learning.</li>
+        <li>Your progress is <strong>automatically synced</strong> to the cloud.</li>
+        <li>Use <strong>Force sync from cloud</strong> if you don&rsquo;t see your cards on another device.</li>
+      </ul>
+    </details>
+
     <main class="main">
       <!-- Dashboard -->
       <section id="view-dashboard" class="view view--active" aria-label="Dashboard">
@@ -73,11 +83,11 @@
           <form id="form-add-card" class="card-form">
             <label class="field">
               <span class="field-label">Word</span>
-              <input type="text" id="input-word" name="word" autocomplete="off" placeholder="e.g. ephemeral" required />
+              <input type="text" id="input-word" name="word" autocomplete="off" placeholder="e.g. casa" required />
             </label>
             <label class="field">
               <span class="field-label">Translation</span>
-              <input type="text" id="input-translation" name="translation" autocomplete="off" placeholder="e.g. мимолётный" required />
+              <input type="text" id="input-translation" name="translation" autocomplete="off" placeholder="e.g. house" required />
             </label>
             <button type="submit" class="btn btn--secondary btn--block">Add card</button>
           </form>

@@ -2,7 +2,6 @@ import {
   initDataStore,
   getCards,
   addCard,
-  getSupabaseContext,
   updateCardNextReview,
   getSyncState,
   getLastSyncedUserId,
@@ -244,36 +243,14 @@ async function runAddCardFlow() {
   };
 
   try {
-    if (!navigator.onLine) {
-      await addCard(word, translation);
-    } else {
-      const { client, userId } = await getSupabaseContext();
-      const id = crypto.randomUUID();
-      const next_review = new Date().toISOString();
-      const { error } = await client.from('cards').insert({
-        id,
-        user_id: userId,
-        word,
-        translation,
-        next_review,
-      });
-      if (error) throw error;
-      await refreshFromRemote();
+    const card = await addCard(word, translation);
+    if (card === null) {
+      window.alert('This word is already in your deck!');
+      return;
     }
     clearForm();
     renderDashboard();
     showToast('Card added.');
-  } catch (err) {
-    console.error(err);
-    try {
-      await addCard(word, translation);
-      clearForm();
-      renderDashboard();
-      showToast('Card saved; will sync when possible.');
-    } catch (e2) {
-      console.error(e2);
-      showToast('Could not save card.');
-    }
   } finally {
     if (submitBtn) submitBtn.disabled = false;
   }

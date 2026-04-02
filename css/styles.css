@@ -385,6 +385,71 @@ body {
   word-break: break-all;
 }
 
+.howto-panel {
+  margin-bottom: 1rem;
+  padding: 0.9rem 1.1rem;
+  border-color: rgba(168, 85, 247, 0.28);
+  background: linear-gradient(165deg, rgba(20, 20, 35, 0.95), var(--bg-panel));
+}
+
+.howto-summary {
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: 0.02em;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.howto-summary::-webkit-details-marker {
+  display: none;
+}
+
+.howto-summary::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-right: 2px solid var(--violet);
+  border-bottom: 2px solid var(--violet);
+  transform: rotate(-45deg);
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+  margin-top: -2px;
+}
+
+.howto-panel[open] .howto-summary::before {
+  transform: rotate(45deg);
+  margin-top: 2px;
+}
+
+.howto-summary:hover {
+  color: var(--violet);
+}
+
+.howto-list {
+  margin: 0.85rem 0 0;
+  padding: 0 0 0 1.15rem;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+
+.howto-list li {
+  margin-bottom: 0.5rem;
+}
+
+.howto-list li:last-child {
+  margin-bottom: 0;
+}
+
+.howto-list strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
 /* Study */
 #view-study.view--active {
   min-height: 60dvh;
