@@ -134,6 +134,11 @@ async function ensureSession() {
   return { client, userId: session.user.id };
 }
 
+/** Same client/session as the rest of the app — for inserts from the UI. */
+export async function getSupabaseContext() {
+  return ensureSession();
+}
+
 async function fetchRemoteCards(userId) {
   const client = await ensureClient();
   const { data, error } = await client

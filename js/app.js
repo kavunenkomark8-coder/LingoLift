@@ -2,6 +2,7 @@ import {
   initDataStore,
   getCards,
   addCard,
+  getSupabaseContext,
   updateCardNextReview,
   getSyncState,
   refreshFromRemote,
@@ -209,24 +210,63 @@ async function grade(hard) {
   showStudyCard();
 }
 
-els.formAddCard.addEventListener('submit', async (e) => {
+function onAddCardFormSubmit(e) {
   e.preventDefault();
+  e.stopPropagation();
+  void runAddCardFlow();
+}
+
+async function runAddCardFlow() {
   const word = els.inputWord.value.trim();
   const translation = els.inputTranslation.value.trim();
   if (!word || !translation) return;
+
   const submitBtn = els.formAddCard.querySelector('button[type="submit"]');
   if (submitBtn) submitBtn.disabled = true;
-  try {
-    await addCard(word, translation);
+
+  const clearForm = () => {
     els.inputWord.value = '';
     els.inputTranslation.value = '';
     els.inputWord.focus();
+  };
+
+  try {
+    if (!navigator.onLine) {
+      await addCard(word, translation);
+    } else {
+      const { client, userId } = await getSupabaseContext();
+      const id = crypto.randomUUID();
+      const next_review = new Date().toISOString();
+      const { error } = await client.from('cards').insert({
+        id,
+        user_id: userId,
+        word,
+        translation,
+        next_review,
+      });
+      if (error) throw error;
+      await refreshFromRemote();
+    }
+    clearForm();
     renderDashboard();
     showToast('Card added.');
+  } catch (err) {
+    console.error(err);
+    try {
+      await addCard(word, translation);
+      clearForm();
+      renderDashboard();
+      showToast('Card saved; will sync when possible.');
+    } catch (e2) {
+      console.error(e2);
+      showToast('Could not save card.');
+    }
   } finally {
     if (submitBtn) submitBtn.disabled = false;
   }
-});
+}
+
+els.formAddCard.addEventListener('submit', onAddCardFormSubmit);
 
 els.btnStartReview.addEventListener('click', startReview);
 els.btnExitStudy.addEventListener('click', () => {
