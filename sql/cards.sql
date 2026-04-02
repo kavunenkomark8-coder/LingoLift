@@ -1,4 +1,6 @@
--- LingoLift: run in Supabase SQL Editor (Dashboard → SQL → New query)
+-- LingoLift — run in Supabase SQL Editor (Dashboard → SQL → New query)
+--
+-- Before using the app: Authentication → Providers → enable "Anonymous" sign-ins.
 
 -- 1) Table
 create table if not exists public.cards (
@@ -14,24 +16,7 @@ create table if not exists public.cards (
 create index if not exists cards_user_next_review_idx
   on public.cards (user_id, next_review);
 
--- 2) Keep updated_at fresh
-create or replace function public.set_cards_updated_at()
-returns trigger
-language plpgsql
-as $$
-begin
-  new.updated_at := now();
-  return new;
-end;
-$$;
-
-drop trigger if exists cards_set_updated_at on public.cards;
-create trigger cards_set_updated_at
-  before update on public.cards
-  for each row
-  execute function public.set_cards_updated_at();
-
--- 3) RLS
+-- 2) RLS
 alter table public.cards enable row level security;
 
 drop policy if exists "cards_select_own" on public.cards;

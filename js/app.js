@@ -1,15 +1,17 @@
-const STORAGE_KEY = 'lingolift-cards';
+import {
+  initDataStore,
+  getCards,
+  addCard,
+  updateCardNextReview,
+  getSyncState,
+  refreshFromRemote,
+  HARD_MS,
+  EASY_MS,
+} from './data-store.js';
+
 const DAY_STATS_KEY = 'lingolift-day-stats';
 
-/** @typedef {{ id: string, word: string, translation: string, nextReview: number }} Card */
 /** @typedef {{ date: string, peakDue: number }} DayStats */
-
-const HARD_MS = 6 * 60 * 60 * 1000;
-const EASY_MS = 3 * 24 * 60 * 60 * 1000;
-
-function uid() {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
-}
 
 function todayKey() {
   const d = new Date();
@@ -40,29 +42,8 @@ function getDayStats(currentDueCount) {
   return s;
 }
 
-/** @returns {Card[]} */
 function loadCards() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter(
-      (c) =>
-        c &&
-        typeof c.id === 'string' &&
-        typeof c.word === 'string' &&
-        typeof c.translation === 'string' &&
-        typeof c.nextReview === 'number'
-    );
-  } catch {
-    return [];
-  }
-}
-
-/** @param {Card[]} cards */
-function saveCards(cards) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(cards));
+  return getCards();
 }
 
 /** Due if nextReview is on or before end of today (includes overdue). */
@@ -70,7 +51,7 @@ function isDueToday(card) {
   return card.nextReview <= endOfToday();
 }
 
-/** @param {Card[]} cards */
+/** @param {{ id: string, word: string, translation: string, nextReview: number }[]} cards */
 function dueTodayQueue(cards) {
   return cards.filter(isDueToday).sort((a, b) => a.nextReview - b.nextReview);
 }
@@ -99,9 +80,10 @@ const els = {
   btnHard: document.getElementById('btn-hard'),
   btnEasy: document.getElementById('btn-easy'),
   toast: document.getElementById('toast'),
+  syncStatus: document.getElementById('sync-status'),
 };
 
-/** @type {Card[]} */
+/** @type {{ id: string, word: string, translation: string, nextReview: number }[]} */
 let queue = [];
 let queueIndex = 0;
 let toastTimer = null;
@@ -112,7 +94,19 @@ function showToast(msg) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => {
     els.toast.hidden = true;
+    updateSyncLabel();
   }, 2200);
+}
+
+function updateSyncLabel() {
+  const s = getSyncState();
+  els.syncStatus.classList.remove('sync-status--action');
+  if (s === 'offline') els.syncStatus.textContent = 'Offline · using saved deck';
+  else if (s === 'syncing') els.syncStatus.textContent = 'Syncing…';
+  else if (s === 'error') {
+    els.syncStatus.textContent = 'Cloud sync issue · tap to retry';
+    els.syncStatus.classList.add('sync-status--action');
+  } else els.syncStatus.textContent = '';
 }
 
 function renderDashboard() {
@@ -141,6 +135,8 @@ function renderDashboard() {
     els.reviewHint.textContent = '';
     els.btnStartReview.disabled = false;
   }
+
+  updateSyncLabel();
 }
 
 function updateSessionProgress() {
@@ -197,15 +193,12 @@ function startReview() {
   showStudyCard();
 }
 
-function grade(hard) {
+async function grade(hard) {
   const card = queue[queueIndex];
   if (!card) return;
   const now = Date.now();
-  const all = loadCards();
-  const i = all.findIndex((c) => c.id === card.id);
-  if (i === -1) return;
-  all[i].nextReview = now + (hard ? HARD_MS : EASY_MS);
-  saveCards(all);
+  const next = now + (hard ? HARD_MS : EASY_MS);
+  await updateCardNextReview(card.id, next);
 
   queueIndex += 1;
   if (queueIndex >= queue.length) {
@@ -216,24 +209,23 @@ function grade(hard) {
   showStudyCard();
 }
 
-els.formAddCard.addEventListener('submit', (e) => {
+els.formAddCard.addEventListener('submit', async (e) => {
   e.preventDefault();
   const word = els.inputWord.value.trim();
   const translation = els.inputTranslation.value.trim();
   if (!word || !translation) return;
-  const cards = loadCards();
-  cards.push({
-    id: uid(),
-    word,
-    translation,
-    nextReview: Date.now(),
-  });
-  saveCards(cards);
-  els.inputWord.value = '';
-  els.inputTranslation.value = '';
-  els.inputWord.focus();
-  renderDashboard();
-  showToast('Card added.');
+  const submitBtn = els.formAddCard.querySelector('button[type="submit"]');
+  if (submitBtn) submitBtn.disabled = true;
+  try {
+    await addCard(word, translation);
+    els.inputWord.value = '';
+    els.inputTranslation.value = '';
+    els.inputWord.focus();
+    renderDashboard();
+    showToast('Card added.');
+  } finally {
+    if (submitBtn) submitBtn.disabled = false;
+  }
 });
 
 els.btnStartReview.addEventListener('click', startReview);
@@ -256,11 +248,20 @@ els.btnShowAnswer.addEventListener('click', () => {
 els.btnHard.addEventListener('click', () => grade(true));
 els.btnEasy.addEventListener('click', () => grade(false));
 
+els.syncStatus.addEventListener('click', () => {
+  if (getSyncState() === 'error') {
+    refreshFromRemote().then(() => renderDashboard());
+  }
+});
+
 function registerSW() {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').catch(() => {});
   }
 }
 
+await initDataStore({
+  onUpdate: () => renderDashboard(),
+});
 renderDashboard();
 registerSW();

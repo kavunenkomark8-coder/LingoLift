@@ -1,9 +1,11 @@
-const CACHE = 'lingolift-v1';
+const CACHE = 'lingolift-v2';
 const ASSETS = [
   './',
   './index.html',
   './css/styles.css',
   './js/app.js',
+  './js/data-store.js',
+  './js/supabase-config.js',
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png'
@@ -32,6 +34,32 @@ self.addEventListener('activate', (e) => {
 
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
+  const url = new URL(e.request.url);
+
+  if (url.hostname.endsWith('supabase.co')) {
+    e.respondWith(fetch(e.request));
+    return;
+  }
+
+  if (url.hostname === 'esm.sh') {
+    e.respondWith(
+      caches.open(CACHE).then(async (cache) => {
+        const cached = await cache.match(e.request);
+        if (cached) return cached;
+        try {
+          const res = await fetch(e.request);
+          if (res.ok) await cache.put(e.request, res.clone());
+          return res;
+        } catch (err) {
+          const stale = await cache.match(e.request);
+          if (stale) return stale;
+          throw err;
+        }
+      })
+    );
+    return;
+  }
+
   e.respondWith(
     caches.match(e.request).then((cached) => cached || fetch(e.request))
   );

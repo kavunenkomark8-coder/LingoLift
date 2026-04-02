@@ -92,6 +92,20 @@ body {
   text-transform: uppercase;
 }
 
+.sync-status {
+  margin: 0.5rem 0 0;
+  min-height: 1.2em;
+  font-size: 0.75rem;
+  color: var(--violet);
+  cursor: default;
+}
+
+.sync-status--action {
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .main {
   flex: 1;
   display: flex;
