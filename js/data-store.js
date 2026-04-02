@@ -25,6 +25,12 @@ let notify = null;
 /** @type {'idle' | 'syncing' | 'offline' | 'error'} */
 let syncState = 'idle';
 
+/** Last user_id used for a successful cloud fetch (anonymous differs per device). */
+let lastSyncedUserId = null;
+
+/** @type {Promise<{ ok: boolean, count?: number, userId?: string, reason?: string }> | null} */
+let refreshInFlight = null;
+
 function setSyncState(s) {
   if (syncState === s) return;
   syncState = s;
@@ -33,6 +39,10 @@ function setSyncState(s) {
 
 export function getSyncState() {
   return syncState;
+}
+
+export function getLastSyncedUserId() {
+  return lastSyncedUserId;
 }
 
 function readCache() {
@@ -120,16 +130,40 @@ async function ensureClient() {
   return supabase;
 }
 
+let authListenerRegistered = false;
+
+async function registerAuthRefreshListener() {
+  if (authListenerRegistered) return;
+  const client = await ensureClient();
+  authListenerRegistered = true;
+  client.auth.onAuthStateChange((event, currentSession) => {
+    if (event === 'SIGNED_IN' && currentSession?.user) {
+      void refreshFromRemote();
+    }
+  });
+}
+
+/**
+ * Ensures a session; re-reads session after anonymous sign-in so RLS sees the right uid.
+ */
 async function ensureSession() {
   const client = await ensureClient();
   let {
     data: { session },
   } = await client.auth.getSession();
+
   if (!session) {
     const { data, error } = await client.auth.signInAnonymously();
     if (error) throw error;
-    session = data.session;
+    session = data.session ?? null;
+    if (!session) {
+      const {
+        data: { session: fresh },
+      } = await client.auth.getSession();
+      session = fresh;
+    }
   }
+
   if (!session?.user) throw new Error('No auth session');
   return { client, userId: session.user.id };
 }
@@ -139,12 +173,11 @@ export async function getSupabaseContext() {
   return ensureSession();
 }
 
-async function fetchRemoteCards(userId) {
+async function fetchRemoteCards() {
   const client = await ensureClient();
   const { data, error } = await client
     .from('cards')
     .select('id, word, translation, next_review')
-    .eq('user_id', userId)
     .order('next_review', { ascending: true });
   if (error) throw error;
   return (data || []).map(fromRow);
@@ -174,8 +207,7 @@ async function flushOutbox(userId) {
             next_review: item.next_review,
             updated_at: new Date().toISOString(),
           })
-          .eq('id', item.id)
-          .eq('user_id', userId);
+          .eq('id', item.id);
         if (error) throw error;
       }
     } catch {
@@ -198,7 +230,7 @@ async function migrateLegacyIfNeeded(userId) {
   }
   if (legacy.length === 0) return;
 
-  const remote = await fetchRemoteCards(userId);
+  const remote = await fetchRemoteCards();
   if (remote.length > 0) {
     localStorage.removeItem(LEGACY_KEY);
     return;
@@ -217,23 +249,44 @@ async function migrateLegacyIfNeeded(userId) {
   if (!error) localStorage.removeItem(LEGACY_KEY);
 }
 
-export async function refreshFromRemote() {
-  if (!navigator.onLine) {
-    setSyncState('offline');
-    return;
-  }
+async function runRefreshPipeline() {
   setSyncState('syncing');
   try {
     const { userId } = await ensureSession();
+    lastSyncedUserId = userId;
     await flushOutbox(userId);
     await migrateLegacyIfNeeded(userId);
-    const remote = await fetchRemoteCards(userId);
+    const remote = await fetchRemoteCards();
     setCards(remote);
     setSyncState('idle');
+    return { ok: true, count: remote.length, userId };
   } catch (e) {
     console.error(e);
     setSyncState('error');
+    return { ok: false, reason: 'error' };
   }
+}
+
+/**
+ * Full fetch from Supabase for the current auth user (single-flight).
+ * Do not call from inside ensureSession — use auth listener for post–sign-in runs.
+ */
+export function refreshFromRemote() {
+  if (!navigator.onLine) {
+    setSyncState('offline');
+    return Promise.resolve({ ok: false, reason: 'offline' });
+  }
+  if (!refreshInFlight) {
+    refreshInFlight = runRefreshPipeline().finally(() => {
+      refreshInFlight = null;
+    });
+  }
+  return refreshInFlight;
+}
+
+/** Explicit UI action — same as refreshFromRemote(). */
+export function forceFullSyncFromSupabase() {
+  return refreshFromRemote();
 }
 
 /**
@@ -243,6 +296,8 @@ export async function initDataStore(opts) {
   notify = opts.onUpdate;
   cards = readCache();
   notify?.();
+
+  await registerAuthRefreshListener();
 
   window.addEventListener('online', () => {
     refreshFromRemote();
@@ -312,7 +367,7 @@ export async function updateCardNextReview(cardId, nextReviewMs) {
   }
 
   try {
-    const { userId } = await ensureSession();
+    await ensureSession();
     const client = await ensureClient();
     const { error } = await client
       .from('cards')
@@ -320,8 +375,7 @@ export async function updateCardNextReview(cardId, nextReviewMs) {
         next_review,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', cardId)
-      .eq('user_id', userId);
+      .eq('id', cardId);
     if (error) throw error;
     await refreshFromRemote();
   } catch (e) {

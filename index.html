@@ -52,8 +52,21 @@
           <button type="button" class="btn btn--primary btn--large" id="btn-start-review">
             Start review
           </button>
+          <button type="button" class="btn btn--outline btn--block" id="btn-force-sync">
+            Force sync from cloud
+          </button>
           <p id="review-hint" class="hint hint--muted"></p>
         </div>
+
+        <details class="panel sync-help-panel">
+          <summary class="sync-help-summary">How sync works</summary>
+          <p class="sync-help-body">
+            The app loads <strong>every row</strong> from the <code>cards</code> table. New cards still store <code>user_id = auth.uid()</code> for auditing.
+          </p>
+          <p class="sync-help-body">
+            If you turn <strong>RLS</strong> back on, restrict reads/writes in policies or switch this app back to per-user queries.
+          </p>
+        </details>
 
         <div class="panel form-panel">
           <h2 class="panel-title">Add card</h2>
@@ -72,6 +85,7 @@
 
         <div class="panel stats-panel">
           <p class="stats-line"><span id="stat-total">0</span> cards in deck</p>
+          <p id="account-hint" class="stats-line stats-line--sub" hidden></p>
         </div>
       </section>
 

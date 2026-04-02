@@ -5,7 +5,9 @@ import {
   getSupabaseContext,
   updateCardNextReview,
   getSyncState,
+  getLastSyncedUserId,
   refreshFromRemote,
+  forceFullSyncFromSupabase,
   HARD_MS,
   EASY_MS,
 } from './data-store.js';
@@ -82,6 +84,8 @@ const els = {
   btnEasy: document.getElementById('btn-easy'),
   toast: document.getElementById('toast'),
   syncStatus: document.getElementById('sync-status'),
+  btnForceSync: document.getElementById('btn-force-sync'),
+  accountHint: document.getElementById('account-hint'),
 };
 
 /** @type {{ id: string, word: string, translation: string, nextReview: number }[]} */
@@ -135,6 +139,15 @@ function renderDashboard() {
   } else {
     els.reviewHint.textContent = '';
     els.btnStartReview.disabled = false;
+  }
+
+  const uid = getLastSyncedUserId();
+  if (uid) {
+    els.accountHint.hidden = false;
+    els.accountHint.textContent = `Deck: all rows in table · new cards use …${uid.slice(-8)}`;
+  } else {
+    els.accountHint.hidden = true;
+    els.accountHint.textContent = '';
   }
 
   updateSyncLabel();
@@ -269,6 +282,19 @@ async function runAddCardFlow() {
 els.formAddCard.addEventListener('submit', onAddCardFormSubmit);
 
 els.btnStartReview.addEventListener('click', startReview);
+
+els.btnForceSync.addEventListener('click', async () => {
+  els.btnForceSync.disabled = true;
+  try {
+    const r = await forceFullSyncFromSupabase();
+    if (r.ok) showToast(`Synced · ${r.count} cards`);
+    else if (r.reason === 'offline') showToast('Offline — cannot reach cloud.');
+    else showToast('Sync failed — check console.');
+  } finally {
+    els.btnForceSync.disabled = false;
+    renderDashboard();
+  }
+});
 els.btnExitStudy.addEventListener('click', () => {
   queue = [];
   queueIndex = 0;
