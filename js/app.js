@@ -10,6 +10,7 @@ import {
   HARD_MS,
   EASY_MS,
 } from './data-store.js';
+import { applyLanguage, getLang, getCurrentLang, t } from './i18n.js';
 
 const DAY_STATS_KEY = 'lingolift-day-stats';
 
@@ -102,13 +103,17 @@ function showToast(msg) {
   }, 2200);
 }
 
+function L() {
+  return getCurrentLang();
+}
+
 function updateSyncLabel() {
   const s = getSyncState();
   els.syncStatus.classList.remove('sync-status--action');
-  if (s === 'offline') els.syncStatus.textContent = 'Offline · using saved deck';
-  else if (s === 'syncing') els.syncStatus.textContent = 'Syncing…';
+  if (s === 'offline') els.syncStatus.textContent = t(L(), 'syncOffline');
+  else if (s === 'syncing') els.syncStatus.textContent = t(L(), 'syncSyncing');
   else if (s === 'error') {
-    els.syncStatus.textContent = 'Cloud sync issue · tap to retry';
+    els.syncStatus.textContent = t(L(), 'syncError');
     els.syncStatus.classList.add('sync-status--action');
   } else els.syncStatus.textContent = '';
 }
@@ -126,14 +131,16 @@ function renderDashboard() {
   els.statTotal.textContent = String(total);
 
   els.progressCount.textContent =
-    peak === 0 ? '0 due today' : `${remaining} left · ${peak} due today`;
+    peak === 0
+      ? t(L(), 'progressZeroDue')
+      : t(L(), 'progressLeftDue', { remaining, peak });
   els.progressFill.style.width = `${peak === 0 ? 0 : pct}%`;
   els.progressBarWrap.setAttribute('aria-valuenow', String(peak === 0 ? 0 : pct));
   els.progressBarWrap.setAttribute('aria-valuemax', '100');
 
   if (remaining === 0) {
     els.reviewHint.textContent =
-      total === 0 ? 'Add your first card to begin.' : 'Nothing left for today.';
+      total === 0 ? t(L(), 'reviewHintEmptyDeck') : t(L(), 'reviewHintNoneToday');
     els.btnStartReview.disabled = true;
   } else {
     els.reviewHint.textContent = '';
@@ -143,7 +150,7 @@ function renderDashboard() {
   const uid = getLastSyncedUserId();
   if (uid) {
     els.accountHint.hidden = false;
-    els.accountHint.textContent = `Deck: all rows in table · new cards use …${uid.slice(-8)}`;
+    els.accountHint.textContent = t(L(), 'accountHint', { id: uid.slice(-8) });
   } else {
     els.accountHint.hidden = true;
     els.accountHint.textContent = '';
@@ -163,7 +170,8 @@ function updateSessionProgress() {
   const remaining = Math.max(0, total - queueIndex);
   const done = queueIndex;
   const pct = Math.round((done / total) * 100);
-  els.studyRemainingLabel.textContent = `${remaining} card${remaining === 1 ? '' : 's'} left today`;
+  els.studyRemainingLabel.textContent =
+    remaining === 1 ? t(L(), 'studyRemainingOne') : t(L(), 'studyRemaining', { n: remaining });
   els.sessionBarFill.style.width = `${pct}%`;
   els.sessionBarWrap.setAttribute('aria-valuenow', String(pct));
 }
@@ -188,14 +196,14 @@ function finishStudySession() {
   els.viewDashboard.classList.add('view--active');
   els.viewDashboard.hidden = false;
   renderDashboard();
-  showToast('Session complete.');
+  showToast(t(L(), 'toastSessionComplete'));
 }
 
 function startReview() {
   const cards = loadCards();
   queue = dueTodayQueue(cards);
   if (queue.length === 0) {
-    showToast('No cards due today.');
+    showToast(t(L(), 'toastNoCardsDue'));
     return;
   }
   queueIndex = 0;
@@ -245,12 +253,12 @@ async function runAddCardFlow() {
   try {
     const card = await addCard(word, translation);
     if (card === null) {
-      window.alert('This word is already in your deck!');
+      window.alert(t(L(), 'alertDuplicateWord'));
       return;
     }
     clearForm();
     renderDashboard();
-    showToast('Card added.');
+    showToast(t(L(), 'toastCardAdded'));
   } finally {
     if (submitBtn) submitBtn.disabled = false;
   }
@@ -264,9 +272,9 @@ els.btnForceSync.addEventListener('click', async () => {
   els.btnForceSync.disabled = true;
   try {
     const r = await forceFullSyncFromSupabase();
-    if (r.ok) showToast(`Synced · ${r.count} cards`);
-    else if (r.reason === 'offline') showToast('Offline — cannot reach cloud.');
-    else showToast('Sync failed — check console.');
+    if (r.ok) showToast(t(L(), 'toastSynced', { count: r.count ?? 0 }));
+    else if (r.reason === 'offline') showToast(t(L(), 'toastOfflineCloud'));
+    else showToast(t(L(), 'toastSyncFailed'));
   } finally {
     els.btnForceSync.disabled = false;
     renderDashboard();
@@ -302,6 +310,19 @@ function registerSW() {
     navigator.serviceWorker.register('./sw.js').catch(() => {});
   }
 }
+
+applyLanguage(getLang());
+
+document.querySelectorAll('.lang-switch [data-lang]').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const lang = btn.getAttribute('data-lang');
+    if (!lang) return;
+    applyLanguage(lang);
+    renderDashboard();
+    updateSyncLabel();
+    if (!els.viewStudy.hidden) updateSessionProgress();
+  });
+});
 
 await initDataStore({
   onUpdate: () => renderDashboard(),

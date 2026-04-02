@@ -1,9 +1,10 @@
-const CACHE = 'lingolift-v4';
+const CACHE = 'lingolift-v5';
 const ASSETS = [
   './',
   './index.html',
   './css/styles.css',
   './js/app.js',
+  './js/i18n.js',
   './js/data-store.js',
   './js/supabase-config.js',
   './manifest.json',
