@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a0a0f" />
+  <meta name="description" content="LingoLift — vocabulary learning with spaced repetition" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="LingoLift" />
+  <title>LingoLift</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" type="image/png" href="icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <div id="app" class="app">
+    <header class="top-bar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <h1 class="brand-name">LingoLift</h1>
+      </div>
+      <p class="tagline">Vocabulary · Spaced repetition</p>
+    </header>
+
+    <main class="main">
+      <!-- Dashboard -->
+      <section id="view-dashboard" class="view view--active" aria-label="Dashboard">
+        <div class="panel progress-panel">
+          <div class="progress-head">
+            <span class="progress-label">Due today</span>
+            <span id="progress-count" class="progress-count">0 / 0</span>
+          </div>
+          <div class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progress-bar-wrap">
+            <div id="progress-fill" class="progress-fill"></div>
+          </div>
+        </div>
+
+        <div class="panel actions-panel">
+          <button type="button" class="btn btn--primary btn--large" id="btn-start-review">
+            Start review
+          </button>
+          <p id="review-hint" class="hint hint--muted"></p>
+        </div>
+
+        <div class="panel form-panel">
+          <h2 class="panel-title">Add card</h2>
+          <form id="form-add-card" class="card-form">
+            <label class="field">
+              <span class="field-label">Word</span>
+              <input type="text" id="input-word" name="word" autocomplete="off" placeholder="e.g. ephemeral" required />
+            </label>
+            <label class="field">
+              <span class="field-label">Translation</span>
+              <input type="text" id="input-translation" name="translation" autocomplete="off" placeholder="e.g. мимолётный" required />
+            </label>
+            <button type="submit" class="btn btn--secondary btn--block">Add card</button>
+          </form>
+        </div>
+
+        <div class="panel stats-panel">
+          <p class="stats-line"><span id="stat-total">0</span> cards in deck</p>
+        </div>
+      </section>
+
+      <!-- Study -->
+      <section id="view-study" class="view" aria-label="Study" hidden>
+        <div class="study-top">
+          <button type="button" class="btn btn--ghost" id="btn-exit-study">← Exit</button>
+          <div class="study-progress-meta">
+            <span id="study-remaining-label" class="study-remaining"></span>
+            <div class="session-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="session-bar-wrap">
+              <div id="session-bar-fill" class="session-fill"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="study-card-wrap">
+          <div id="study-card" class="flash-card">
+            <p id="study-front" class="flash-front"></p>
+            <div id="study-back-wrap" class="flash-back-wrap" hidden>
+              <p class="flash-divider" aria-hidden="true"></p>
+              <p id="study-back" class="flash-back"></p>
+            </div>
+          </div>
+        </div>
+
+        <div class="study-actions">
+          <button type="button" class="btn btn--primary btn--large" id="btn-show-answer">Show answer</button>
+          <div id="grade-row" class="grade-row" hidden>
+            <button type="button" class="btn btn--hard" id="btn-hard">Hard <span class="btn-sub">soon</span></button>
+            <button type="button" class="btn btn--easy" id="btn-easy">Easy <span class="btn-sub">later</span></button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  </div>
+  <script src="js/app.js" type="module"></script>
+</body>
+</html>
