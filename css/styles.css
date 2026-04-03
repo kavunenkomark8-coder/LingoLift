@@ -53,17 +53,6 @@ body {
   flex-direction: column;
 }
 
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
 
 .top-bar {
   text-align: center;
@@ -155,7 +144,7 @@ body {
 
 .btn-footer-sync {
   font-family: var(--font);
-  font-size: calc(0.65rem * 2.25);
+  font-size: 1.46rem;
   font-weight: 500;
   letter-spacing: 0.02em;
   color: #5a5a6c;
@@ -635,21 +624,6 @@ body {
   background: rgba(168, 85, 247, 0.08);
 }
 
-.btn--outline {
-  margin-top: 0.65rem;
-  color: var(--text-muted);
-  background: transparent;
-  border: 1px solid var(--border);
-  font-size: 0.88rem;
-  font-weight: 500;
-  padding: 0.6rem 1rem;
-}
-
-.btn--outline:hover {
-  color: var(--text);
-  border-color: var(--border-strong);
-  background: rgba(168, 85, 247, 0.06);
-}
 
 .btn--ghost {
   background: transparent;
@@ -710,9 +684,6 @@ body {
   opacity: 0.9;
 }
 
-.sync-help-panel {
-  padding: 0.85rem 1rem;
-}
 
 .howto-panel {
   margin-top: 0.15rem;

@@ -90,7 +90,7 @@ function validCard(c) {
 /** @param {Record<string, unknown>} row */
 function fromRow(row) {
   const t = row.next_review;
-  const ms = typeof t === 'string' ? new Date(t).getTime() : new Date(t).getTime();
+  const ms = typeof t === 'string' ? new Date(t).getTime() : Number(t);
   return {
     id: String(row.id),
     word: String(row.word),

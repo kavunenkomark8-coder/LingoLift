@@ -195,19 +195,27 @@ function updateSyncLabel() {
 
   if (s === 'offline') {
     els.syncStatus.textContent = t('syncOffline');
+    els.syncStatus.removeAttribute('role');
+    els.syncStatus.removeAttribute('tabindex');
     els.app?.classList.add('app--sync-active');
     els.syncDynamicRow?.classList.add('sync-dynamic-row--visible');
   } else if (s === 'syncing') {
     els.syncStatus.innerHTML = `<span class="sync-spinner" aria-hidden="true"></span><span class="sync-syncing-text">${t('syncSyncing')}</span>`;
+    els.syncStatus.removeAttribute('role');
+    els.syncStatus.removeAttribute('tabindex');
     els.app?.classList.add('app--sync-active', 'app--syncing');
     els.syncDynamicRow?.classList.add('sync-dynamic-row--visible');
   } else if (s === 'error') {
     els.syncStatus.textContent = t('syncError');
     els.syncStatus.classList.add('sync-status--action');
+    els.syncStatus.setAttribute('role', 'button');
+    els.syncStatus.setAttribute('tabindex', '0');
     els.app?.classList.add('app--sync-active');
     els.syncDynamicRow?.classList.add('sync-dynamic-row--visible');
   } else {
     els.syncStatus.textContent = '';
+    els.syncStatus.removeAttribute('role');
+    els.syncStatus.removeAttribute('tabindex');
   }
 }
 
@@ -354,7 +362,7 @@ async function runAddCardFlow() {
   try {
     const card = await addCard(word, translation);
     if (card === null) {
-      window.alert(t('alertDuplicateWord'));
+      showToast(t('alertDuplicateWord'));
       return;
     }
     clearForm();
@@ -428,13 +436,23 @@ els.btnShowAnswer.addEventListener('click', () => {
 els.btnHard.addEventListener('click', () => grade(true));
 els.btnEasy.addEventListener('click', () => grade(false));
 
-els.syncStatus.addEventListener('click', () => {
+function onSyncStatusActivate() {
   if (getSyncState() === 'error') void refreshFromRemote().then(() => renderDashboard());
+}
+
+els.syncStatus.addEventListener('click', onSyncStatusActivate);
+els.syncStatus.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault();
+    onSyncStatusActivate();
+  }
 });
 
 function registerSW() {
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js').catch(() => {});
+    navigator.serviceWorker.register('./sw.js').catch((err) => {
+      console.error('[SW] Registration failed:', err);
+    });
   }
 }
 
@@ -451,8 +469,13 @@ els.howtoToggle?.addEventListener('click', () => {
   content?.setAttribute('aria-hidden', open ? 'false' : 'true');
 });
 
-await initDataStore({
-  onUpdate: () => renderDashboard(),
-});
+try {
+  await initDataStore({
+    onUpdate: () => renderDashboard(),
+  });
+} catch (err) {
+  console.error('[App] initDataStore failed:', err);
+  showToast('Could not connect. Check your connection and reload.');
+}
 renderDashboard();
 registerSW();

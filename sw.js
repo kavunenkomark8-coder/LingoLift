@@ -68,7 +68,7 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  if (url.hostname === 'api.mymemory.translated.net') {
+  if (url.hostname === 'translate.googleapis.com') {
     e.respondWith(fetch(e.request));
     return;
   }
