@@ -68,13 +68,16 @@ body {
 .top-bar {
   text-align: center;
   margin-bottom: 0.4rem;
+  overflow: visible;
 }
 
 .brand {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
+  overflow: visible;
 }
 
 .brand-hit {
@@ -101,7 +104,7 @@ body {
   position: absolute;
   right: -0.15rem;
   bottom: -0.2rem;
-  z-index: 0;
+  z-index: 10;
   font-size: 1.4rem;
   line-height: 1;
   opacity: 0;
@@ -113,7 +116,7 @@ body {
 
 .brand-hit .brand-name {
   position: relative;
-  z-index: 1;
+  z-index: 0;
 }
 
 .brand-frog--pop {
