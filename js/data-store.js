@@ -180,8 +180,8 @@ export async function getSupabaseContext() {
   return ensureSession();
 }
 
-async function fetchRemoteCards() {
-  const client = await ensureClient();
+async function fetchRemoteCards(clientOpt) {
+  const client = clientOpt ?? (await ensureClient());
   const { data, error } = await client
     .from('cards')
     .select('id, word, translation, next_review')
@@ -190,8 +190,8 @@ async function fetchRemoteCards() {
   return (data || []).map(fromRow);
 }
 
-async function flushOutbox(userId) {
-  const client = await ensureClient();
+async function flushOutbox(userId, clientOpt) {
+  const client = clientOpt ?? (await ensureClient());
   let box = readOutbox();
   if (box.length === 0) return;
 
@@ -224,26 +224,29 @@ async function flushOutbox(userId) {
   writeOutbox(next);
 }
 
-async function migrateLegacyIfNeeded(userId) {
+/**
+ * @param {import('@supabase/supabase-js').SupabaseClient} clientOpt
+ * @returns {Promise<boolean>} true if legacy rows were inserted (caller should refetch)
+ */
+async function migrateLegacyIfNeeded(userId, remote, clientOpt) {
   let legacy = [];
   try {
     const raw = localStorage.getItem(LEGACY_KEY);
-    if (!raw) return;
+    if (!raw) return false;
     const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return;
+    if (!Array.isArray(parsed)) return false;
     legacy = parsed.filter(validCard);
   } catch {
-    return;
+    return false;
   }
-  if (legacy.length === 0) return;
+  if (legacy.length === 0) return false;
 
-  const remote = await fetchRemoteCards();
   if (remote.length > 0) {
     localStorage.removeItem(LEGACY_KEY);
-    return;
+    return false;
   }
 
-  const client = await ensureClient();
+  const client = clientOpt ?? (await ensureClient());
   const rows = legacy.map((c) => ({
     id: crypto.randomUUID(),
     user_id: userId,
@@ -253,17 +256,22 @@ async function migrateLegacyIfNeeded(userId) {
   }));
 
   const { error } = await client.from('cards').insert(rows);
-  if (!error) localStorage.removeItem(LEGACY_KEY);
+  if (!error) {
+    localStorage.removeItem(LEGACY_KEY);
+    return true;
+  }
+  return false;
 }
 
 async function runRefreshPipeline() {
   setSyncState('syncing');
   try {
-    const { userId } = await ensureSession();
+    const { client, userId } = await ensureSession();
     lastSyncedUserId = userId;
-    await flushOutbox(userId);
-    await migrateLegacyIfNeeded(userId);
-    const remote = await fetchRemoteCards();
+    await flushOutbox(userId, client);
+    let remote = await fetchRemoteCards(client);
+    const migrated = await migrateLegacyIfNeeded(userId, remote, client);
+    if (migrated) remote = await fetchRemoteCards(client);
     setCards(remote);
     setSyncState('idle');
     return { ok: true, count: remote.length, userId };
@@ -340,8 +348,7 @@ export async function addCard(word, translation) {
   }
 
   try {
-    const { userId } = await ensureSession();
-    const client = await ensureClient();
+    const { client, userId } = await ensureSession();
     const { error } = await client.from('cards').insert({
       id,
       user_id: userId,
@@ -379,8 +386,7 @@ export async function updateCardNextReview(cardId, nextReviewMs) {
   }
 
   try {
-    await ensureSession();
-    const client = await ensureClient();
+    const { client } = await ensureSession();
     const { error } = await client
       .from('cards')
       .update({

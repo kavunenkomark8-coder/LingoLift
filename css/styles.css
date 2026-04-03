@@ -225,6 +225,8 @@ body {
   grid-template-rows: 0fr;
   margin: 0;
   padding: 0;
+  contain: layout;
+  transform: translateZ(0);
   transition:
     grid-template-rows 0.35s var(--sync-ease),
     margin-bottom 0.35s var(--sync-ease);
@@ -239,12 +241,12 @@ body {
   min-height: 0;
   overflow: hidden;
   opacity: 0;
-  transition: opacity 0.28s ease;
+  transform: translateZ(0);
+  transition: opacity 0.35s var(--sync-ease);
 }
 
 .sync-dynamic-row--visible .sync-dynamic-row__inner {
   opacity: 1;
-  transition: opacity 0.32s ease 0.04s;
 }
 
 .sync-status {
@@ -949,6 +951,8 @@ body {
 .flash-back-wrap {
   --reveal-ease: cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
+  contain: content;
+  backface-visibility: hidden;
   transition:
     max-height 0.45s var(--reveal-ease),
     opacity 0.4s var(--reveal-ease),
@@ -961,7 +965,7 @@ body {
   opacity: 0;
   visibility: hidden;
   margin-top: 0;
-  transform: translateY(-8px);
+  transform: translate3d(0, -8px, 0);
 }
 
 .flash-back-wrap--revealed {
@@ -969,7 +973,7 @@ body {
   opacity: 1;
   visibility: visible;
   margin-top: 1.25rem;
-  transform: translateY(0);
+  transform: translate3d(0, 0, 0);
 }
 
 .flash-divider {

@@ -45,18 +45,15 @@ function getDayStats(currentDueCount) {
   return s;
 }
 
-function loadCards() {
-  return getCards();
-}
-
-/** Due if nextReview is on or before end of today (includes overdue). */
-function isDueToday(card) {
-  return card.nextReview <= endOfToday();
-}
-
 /** @param {{ id: string, word: string, translation: string, nextReview: number }[]} cards */
 function dueTodayQueue(cards) {
-  return cards.filter(isDueToday).sort((a, b) => a.nextReview - b.nextReview);
+  const end = endOfToday();
+  const out = [];
+  for (const c of cards) {
+    if (c.nextReview <= end) out.push(c);
+  }
+  out.sort((a, b) => a.nextReview - b.nextReview);
+  return out;
 }
 
 const els = {
@@ -93,6 +90,10 @@ const els = {
   btnForceSync: document.getElementById('btn-force-sync'),
   btnFooterSyncText: document.querySelector('#btn-force-sync .btn-footer-sync__text'),
   accountHint: document.getElementById('account-hint'),
+  howtoPanel: document.querySelector('.howto-panel'),
+  howtoToggle: document.getElementById('howto-toggle'),
+  howtoContent: document.getElementById('howto-content'),
+  formAddCardSubmit: document.querySelector('#form-add-card button[type="submit"]'),
 };
 
 /** @type {ReturnType<typeof setTimeout> | null} */
@@ -120,11 +121,12 @@ function showToast(msg) {
 function parseGtxTranslation(data) {
   const row = data?.[0];
   if (!Array.isArray(row)) return '';
-  let out = '';
-  for (const seg of row) {
-    if (Array.isArray(seg) && typeof seg[0] === 'string') out += seg[0];
+  const parts = [];
+  for (let i = 0; i < row.length; i++) {
+    const seg = row[i];
+    if (Array.isArray(seg) && typeof seg[0] === 'string') parts.push(seg[0]);
   }
-  return out.trim();
+  return parts.join('').trim();
 }
 
 async function fetchGtxTranslation(word) {
@@ -214,7 +216,7 @@ function setStudyChromeActive(active) {
 }
 
 function renderDashboard() {
-  const cards = loadCards();
+  const cards = getCards();
   const due = dueTodayQueue(cards);
   const remaining = due.length;
   const total = cards.length;
@@ -298,7 +300,7 @@ function finishStudySession() {
 }
 
 function startReview() {
-  const cards = loadCards();
+  const cards = getCards();
   queue = dueTodayQueue(cards);
   if (queue.length === 0) {
     showToast(t('toastNoCardsDue'));
@@ -340,7 +342,7 @@ async function runAddCardFlow() {
   const translation = els.inputTranslation.value.trim();
   if (!word || !translation) return;
 
-  const submitBtn = els.formAddCard.querySelector('button[type="submit"]');
+  const submitBtn = els.formAddCardSubmit;
   if (submitBtn) submitBtn.disabled = true;
 
   const clearForm = () => {
@@ -427,9 +429,7 @@ els.btnHard.addEventListener('click', () => grade(true));
 els.btnEasy.addEventListener('click', () => grade(false));
 
 els.syncStatus.addEventListener('click', () => {
-  if (getSyncState() === 'error') {
-    refreshFromRemote().then(() => renderDashboard());
-  }
+  if (getSyncState() === 'error') void refreshFromRemote().then(() => renderDashboard());
 });
 
 function registerSW() {
@@ -440,10 +440,10 @@ function registerSW() {
 
 applyUiStrings();
 
-document.getElementById('howto-toggle')?.addEventListener('click', () => {
-  const panel = document.querySelector('.howto-panel');
-  const btn = document.getElementById('howto-toggle');
-  const content = document.getElementById('howto-content');
+els.howtoToggle?.addEventListener('click', () => {
+  const panel = els.howtoPanel;
+  const btn = els.howtoToggle;
+  const content = els.howtoContent;
   if (!panel || !btn) return;
   const open = !panel.classList.contains('howto-panel--open');
   panel.classList.toggle('howto-panel--open', open);

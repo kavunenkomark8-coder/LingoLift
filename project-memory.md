@@ -1,19 +1,25 @@
 # LingoLift — project memory (for AI context)
 
-**Document version:** 13.1  
-**App / Service Worker cache:** `lingolift-v13.1` (`sw.js` → `CACHE = 'lingolift-v13.1'`)
+**Document version:** 14  
+**App / Service Worker cache:** `lingolift-v14` (`sw.js` → `CACHE = 'lingolift-v14'`)
 
-**v13.1:** Removed frog animation. Finalized smooth dynamic syncing layout and focused review UI.
+**v14:** Performance pass: leaner due-today queue, shared Supabase client in refresh/add/update paths, legacy migration refetch only when needed, GPU-friendlier review reveal and sync strip, resilient SW precache.
 
-**v13 (superseded details):** Dynamic sync strip, study-mode chrome hiding, enlarged grade buttons — retained; **frog easter egg removed** in v13.1.
+**v13.1 (still applies for UX):** No frog; dynamic sync strip; **`app--study`** hides footer / how-to / sync strip; large Hard/Easy; translation reveal animation.
 
 **Major pivot (v11, still applies): English-only UI.** Multi-language support (RU, UA, PT) and the header language switcher were removed for a cleaner, unified international experience. The app is **English-only**; `<html lang="en">` is fixed. **Core focus remains learning Portuguese vocabulary** (words often in PT, translations often in English). Legacy `localStorage` key `lingolift-lang` is cleared on load.
 
 **v12 UI (still applies):** The Add card form includes **Source language** and **Target language** selects (Google codes `pt`, `en`, `ru`, `uk`). Defaults: source **PT**, target **EN**. The magic wand (🪄) calls Google GTX with **`sl`** and **`tl`** from those selects.
 
-**v13.1 layout / sync:** **`#sync-dynamic-row`** sits between the tagline and “How to use”, with inner **`.sync-dynamic-row__inner`** so the strip uses **`display: grid; grid-template-rows: 0fr` → `1fr`** when **`.sync-dynamic-row--visible`** (smooth height, no `max-height` jump). Tagline uses the same easing (**`cubic-bezier(0.4, 0, 0.2, 1)`**, ~**0.35s**) for **`transform`** / **`margin`** when **`#app`** has **`app--sync-active`** (single shift — no separate “syncing vs offline” tagline jump). Inner **opacity** fades with the strip. **`app--syncing`** remains on `#app` while **`getSyncState() === 'syncing'`** (spinner + “Syncing…” HTML in **`#sync-status`**).
+---
 
-**v13.1 review:** **`app--study`** hides **footer Cloud sync**, **How to use**, and the **sync strip**; **Hard/Easy** in **`#view-study`** use large tap targets (**`min-height` ~4.75rem**, **`min-width: 44px`**, **`touch-action: manipulation`**). Translation/answer uses **`.flash-back-wrap--closed` / `--revealed`** with **`--reveal-ease`** for slide + fade.
+## Optimization Log (v14)
+
+- **`js/app.js`:** `dueTodayQueue` uses one **`endOfToday()`** read and a single pass + sort (no per-card `filter` callback); removed **`loadCards`** wrapper; **`parseGtxTranslation`** builds an array then **`join`**; cached DOM refs for how-to controls and add-card submit; **`void`** on fire-and-forget refresh.
+- **`js/data-store.js`:** **`runRefreshPipeline`** uses **`const { client, userId } = await ensureSession()`** and passes **`client`** into **`flushOutbox`**, **`fetchRemoteCards`**, **`migrateLegacyIfNeeded`** to avoid redundant **`ensureClient()`**; **`migrateLegacyIfNeeded(userId, remote, client)`** reuses the first remote fetch and returns **`true`** only when legacy rows were inserted, then refetches once; **`addCard`** / **`updateCardNextReview`** use **`client`** from **`ensureSession()`** only.
+- **`css/styles.css`:** Sync strip uses **`contain: layout`**, **`translateZ(0)`**, and opacity timing aligned with **`--sync-ease`** to reduce flicker; **`.flash-back-wrap`** uses **`translate3d`**, **`contain: content`**, **`backface-visibility: hidden`** for smoother compositing on mobile.
+- **`sw.js`:** Install uses **`Promise.allSettled`** per asset so one failed URL does not block the rest; cache name **`lingolift-v14`**.
+- **`js/i18n.js`:** Removed unused string keys (**`toastSynced`**, **`toastEnterWord`**).
 
 ---
 
@@ -35,7 +41,7 @@
 ## Spaced repetition
 
 - **Intervals** (`data-store.js`): `HARD_MS` (~6 hours), `EASY_MS` (**3 days**).
-- **Due today** (`app.js`): `nextReview` on or before end of local calendar day; queue sorted by `nextReview`. Progress bar uses `lingolift-day-stats`.
+- **Due today** (`app.js`): `nextReview` on or before end of local calendar day; queue built with a lightweight loop + sort. Progress bar uses `lingolift-day-stats`.
 
 ---
 
@@ -57,9 +63,9 @@
 
 ## Sync flow, `user_id`, RLS
 
-- **Fetch:** `fetchRemoteCards()` — RLS must scope rows to the authenticated user.
+- **Fetch:** `fetchRemoteCards(client?)` — RLS must scope rows to the authenticated user.
 - **Writes:** Inserts/outbox include **`user_id`** from the session.
-- **Outbox:** Offline/error replay via `flushOutbox(userId)`.
+- **Outbox:** Offline/error replay via **`flushOutbox(userId, client?)`**.
 
 ---
 

@@ -1,4 +1,4 @@
-const CACHE = 'lingolift-v13.1';
+const CACHE = 'lingolift-v14';
 const ASSETS = [
   './',
   './index.html',
@@ -16,8 +16,9 @@ self.addEventListener('install', (e) => {
   e.waitUntil(
     caches
       .open(CACHE)
-      .then((cache) => cache.addAll(ASSETS))
-      .catch(() => {})
+      .then((cache) =>
+        Promise.allSettled(ASSETS.map((url) => cache.add(url))).then(() => cache)
+      )
       .then(() => self.skipWaiting())
   );
 });
