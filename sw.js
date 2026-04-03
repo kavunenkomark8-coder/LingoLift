@@ -1,4 +1,4 @@
-const CACHE = 'lingolift-v14';
+const CACHE = 'lingolift-v15';
 const ASSETS = [
   './',
   './index.html',
@@ -8,8 +8,8 @@ const ASSETS = [
   './js/data-store.js',
   './js/supabase-config.js',
   './manifest.json',
-  './icons/icon-192.png',
-  './icons/icon-512.png'
+  './android-chrome-192x192.png',
+  './android-chrome-512x512.png'
 ];
 
 self.addEventListener('install', (e) => {

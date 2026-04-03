@@ -1,7 +1,9 @@
 # LingoLift — project memory (for AI context)
 
-**Document version:** 14  
-**App / Service Worker cache:** `lingolift-v14` (`sw.js` → `CACHE = 'lingolift-v14'`)
+**Document version:** 15  
+**App / Service Worker cache:** `lingolift-v15` (`sw.js` → `CACHE = 'lingolift-v15'`)
+
+**v15:** Added custom branding: Minimalist “L” lifted icon and linked PWA favicons. **`index.html`** uses **`android-chrome-192x192.png`** / **`android-chrome-512x512.png`** at repo root for **`rel="icon"`** (with **`sizes`**) and **`apple-touch-icon`**. **`manifest.json`** icons point to the same files; **`theme_color`** **`#5B21B6`** (deep violet); **`background_color`** **`#0a0a0f`** (app shell). **`icons/`** holds **`icon-source.png`**, **`icon-192.png`**, **`icon-512.png`** and **`export-icon-sizes.ps1`** for regenerating assets.
 
 **v14:** Performance pass: leaner due-today queue, shared Supabase client in refresh/add/update paths, legacy migration refetch only when needed, GPU-friendlier review reveal and sync strip, resilient SW precache.
 
@@ -18,7 +20,7 @@
 - **`js/app.js`:** `dueTodayQueue` uses one **`endOfToday()`** read and a single pass + sort (no per-card `filter` callback); removed **`loadCards`** wrapper; **`parseGtxTranslation`** builds an array then **`join`**; cached DOM refs for how-to controls and add-card submit; **`void`** on fire-and-forget refresh.
 - **`js/data-store.js`:** **`runRefreshPipeline`** uses **`const { client, userId } = await ensureSession()`** and passes **`client`** into **`flushOutbox`**, **`fetchRemoteCards`**, **`migrateLegacyIfNeeded`** to avoid redundant **`ensureClient()`**; **`migrateLegacyIfNeeded(userId, remote, client)`** reuses the first remote fetch and returns **`true`** only when legacy rows were inserted, then refetches once; **`addCard`** / **`updateCardNextReview`** use **`client`** from **`ensureSession()`** only.
 - **`css/styles.css`:** Sync strip uses **`contain: layout`**, **`translateZ(0)`**, and opacity timing aligned with **`--sync-ease`** to reduce flicker; **`.flash-back-wrap`** uses **`translate3d`**, **`contain: content`**, **`backface-visibility: hidden`** for smoother compositing on mobile.
-- **`sw.js`:** Install uses **`Promise.allSettled`** per asset so one failed URL does not block the rest; cache name **`lingolift-v14`**.
+- **`sw.js`:** Install uses **`Promise.allSettled`** per asset so one failed URL does not block the rest; cache name bumped with versions (e.g. **`lingolift-v15`**).
 - **`js/i18n.js`:** Removed unused string keys (**`toastSynced`**, **`toastEnterWord`**).
 
 ---
@@ -35,6 +37,7 @@
 ## Brand / header
 
 - **Minimal header:** Violet **dot** (`.brand-dot`) next to static **`h1.brand-name`** (“LingoLift” gradient). No logo button / frog.
+- **PWA / favicons (v15):** Root **`android-chrome-192x192.png`** and **`android-chrome-512x512.png`** (copies of generated icons). **`meta name="theme-color"`** **`#5B21B6`** to match manifest tint.
 
 ---
 
@@ -89,6 +92,6 @@
 | App logic  | `js/app.js` |
 | UI strings | `js/i18n.js` |
 | Supabase   | `js/data-store.js`, `js/supabase-config.js` |
-| PWA cache  | `sw.js`, `manifest.json` |
+| PWA cache  | `sw.js`, `manifest.json`, root `android-chrome-*.png` |
 
 **When you change versioned behavior** (SW bump, sync contract, translate API, major UI rules), **update this file** so the next session stays aligned.
