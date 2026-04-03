@@ -1,4 +1,4 @@
-const CACHE = 'lingolift-v18';
+const CACHE = 'lingolift-v18-final';
 
 const ASSETS = [
   './',
@@ -14,13 +14,13 @@ const ASSETS = [
 ];
 
 self.addEventListener('install', (e) => {
+  self.skipWaiting();
   e.waitUntil(
     caches
       .open(CACHE)
       .then((cache) =>
         Promise.allSettled(ASSETS.map((url) => cache.add(url))).then(() => cache)
       )
-      .then(() => self.skipWaiting())
   );
 });
 
@@ -29,7 +29,9 @@ self.addEventListener('activate', (e) => {
     caches
       .keys()
       .then((keys) =>
-        Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
+        Promise.all(
+          keys.map((key) => (key === CACHE ? Promise.resolve(true) : caches.delete(key)))
+        )
       )
       .then(() => self.clients.claim())
   );

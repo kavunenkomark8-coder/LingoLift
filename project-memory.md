@@ -1,9 +1,11 @@
 # LingoLift — project memory (for AI context)
 
 **Document version:** 15.3 (Restored)  
-**App / Service Worker cache:** `lingolift-v18` (`sw.js` → `CACHE = 'lingolift-v18'`)
+**App / Service Worker cache:** `lingolift-v18-final` (`sw.js` → `CACHE = 'lingolift-v18-final'`)
 
-**v15.3 (Restored):** Rolled back from OCR/Camera experiment. Restored stable minimalist UI with bilingual card support and magic auto-translate. **Tesseract.js**, camera button, photo input, and scanning overlay removed from **`index.html`** / **`app.js`** / **`i18n.js`** / **`css/styles.css`**. Service Worker bumped to **`v18`** with **core app precache only** (no OCR CDN URLs) so clients drop stale Tesseract entries from cache.
+**v18 (SW hard reset):** Cache name **`lingolift-v18-final`**; **`install`** calls **`self.skipWaiting()`** first so updates activate immediately; **`activate`** deletes **all** caches whose name is not the current **`CACHE`**, then **`clients.claim()`**. OCR/Tesseract UI and scripts remain removed (see v15.3).
+
+**v15.3 (Restored):** Rolled back from OCR/Camera experiment. Restored stable minimalist UI with bilingual card support and magic auto-translate. **Tesseract.js**, camera button, photo input, and scanning overlay removed from **`index.html`** / **`app.js`** / **`i18n.js`** / **`css/styles.css`**. Service Worker uses **core app precache only** (no OCR CDN URLs) so clients drop stale Tesseract entries from cache.
 
 **v15.2:** **App avatar** is the user-provided **L** icon screenshot (`icons/icon-source.png`). **`export-icon-sizes.ps1`** crops to a **center square** then exports **192** / **512** and root **`android-chrome-*.png`**. **`theme_color`** **`#5312B1`** (deep purple from gradient).
 
@@ -26,7 +28,7 @@
 - **`js/app.js`:** `dueTodayQueue` uses one **`endOfToday()`** read and a single pass + sort (no per-card `filter` callback); removed **`loadCards`** wrapper; **`parseGtxTranslation`** builds an array then **`join`**; cached DOM refs for how-to controls and add-card submit; **`void`** on fire-and-forget refresh.
 - **`js/data-store.js`:** **`runRefreshPipeline`** uses **`const { client, userId } = await ensureSession()`** and passes **`client`** into **`flushOutbox`**, **`fetchRemoteCards`**, **`migrateLegacyIfNeeded`** to avoid redundant **`ensureClient()`**; **`migrateLegacyIfNeeded(userId, remote, client)`** reuses the first remote fetch and returns **`true`** only when legacy rows were inserted, then refetches once; **`addCard`** / **`updateCardNextReview`** use **`client`** from **`ensureSession()`** only.
 - **`css/styles.css`:** Sync strip uses **`contain: layout`**, **`translateZ(0)`**, and opacity timing aligned with **`--sync-ease`** to reduce flicker; **`.flash-back-wrap`** uses **`translate3d`**, **`contain: content`**, **`backface-visibility: hidden`** for smoother compositing on mobile.
-- **`sw.js`:** Install uses **`Promise.allSettled`** per asset so one failed URL does not block the rest; cache name bumped with versions (e.g. **`lingolift-v18`** for shell assets).
+- **`sw.js`:** Install uses **`Promise.allSettled`** per asset so one failed URL does not block the rest; **`self.skipWaiting()`** at start of **`install`**; cache name bumped with versions (e.g. **`lingolift-v18-final`** for shell assets); **`activate`** purges non-current caches.
 - **`js/i18n.js`:** Removed unused string keys (**`toastSynced`**, **`toastEnterWord`**) in earlier passes; OCR strings removed in v15.3 restore.
 
 ---
