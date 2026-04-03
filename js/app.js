@@ -10,7 +10,7 @@ import {
   HARD_MS,
   EASY_MS,
 } from './data-store.js';
-import { applyLanguage, getLang, getCurrentLang, t, LANG_CYCLE } from './i18n.js';
+import { applyUiStrings, t } from './i18n.js';
 
 const DAY_STATS_KEY = 'lingolift-day-stats';
 
@@ -109,18 +109,9 @@ function showToast(msg) {
   }, 2200);
 }
 
-/** Google GTX target lang: Portuguese → UI language (en for EN/PT). */
+/** Google GTX: Portuguese → English (app UI is English-only). */
 function gtxTargetLang() {
-  switch (getCurrentLang()) {
-    case 'ru':
-      return 'ru';
-    case 'ua':
-      return 'uk';
-    case 'en':
-    case 'pt':
-    default:
-      return 'en';
-  }
+  return 'en';
 }
 
 /**
@@ -181,30 +172,26 @@ async function runAutoTranslate() {
     const normWord = word.toLowerCase();
     const normOut = text.toLowerCase();
     if (normOut === normWord) {
-      showToast(t(L(), 'toastTranslationNotFound'));
+      showToast(t('toastTranslationNotFound'));
       return;
     }
     els.inputTranslation.value = text;
     flashTranslationFieldBorder();
   } catch {
-    showToast(t(L(), 'alertTranslationFailed'));
+    showToast(t('alertTranslationFailed'));
   } finally {
     btn.disabled = false;
     btn.classList.remove('is-busy');
   }
 }
 
-function L() {
-  return getCurrentLang();
-}
-
 function updateSyncLabel() {
   const s = getSyncState();
   els.syncStatus.classList.remove('sync-status--action');
-  if (s === 'offline') els.syncStatus.textContent = t(L(), 'syncOffline');
-  else if (s === 'syncing') els.syncStatus.textContent = t(L(), 'syncSyncing');
+  if (s === 'offline') els.syncStatus.textContent = t('syncOffline');
+  else if (s === 'syncing') els.syncStatus.textContent = t('syncSyncing');
   else if (s === 'error') {
-    els.syncStatus.textContent = t(L(), 'syncError');
+    els.syncStatus.textContent = t('syncError');
     els.syncStatus.classList.add('sync-status--action');
   } else els.syncStatus.textContent = '';
 }
@@ -223,15 +210,15 @@ function renderDashboard() {
 
   els.progressCount.textContent =
     peak === 0
-      ? t(L(), 'progressZeroDue')
-      : t(L(), 'progressLeftDue', { remaining, peak });
+      ? t('progressZeroDue')
+      : t('progressLeftDue', { remaining, peak });
   els.progressFill.style.width = `${peak === 0 ? 0 : pct}%`;
   els.progressBarWrap.setAttribute('aria-valuenow', String(peak === 0 ? 0 : pct));
   els.progressBarWrap.setAttribute('aria-valuemax', '100');
 
   if (remaining === 0) {
     els.reviewHint.textContent =
-      total === 0 ? t(L(), 'reviewHintEmptyDeck') : t(L(), 'reviewHintNoneToday');
+      total === 0 ? t('reviewHintEmptyDeck') : t('reviewHintNoneToday');
     els.btnStartReview.disabled = true;
   } else {
     els.reviewHint.textContent = '';
@@ -241,7 +228,7 @@ function renderDashboard() {
   const uid = getLastSyncedUserId();
   if (uid) {
     els.accountHint.hidden = false;
-    els.accountHint.textContent = t(L(), 'accountHint', { id: uid.slice(-8) });
+    els.accountHint.textContent = t('accountHint', { id: uid.slice(-8) });
   } else {
     els.accountHint.hidden = true;
     els.accountHint.textContent = '';
@@ -262,7 +249,7 @@ function updateSessionProgress() {
   const done = queueIndex;
   const pct = Math.round((done / total) * 100);
   els.studyRemainingLabel.textContent =
-    remaining === 1 ? t(L(), 'studyRemainingOne') : t(L(), 'studyRemaining', { n: remaining });
+    remaining === 1 ? t('studyRemainingOne') : t('studyRemaining', { n: remaining });
   els.sessionBarFill.style.width = `${pct}%`;
   els.sessionBarWrap.setAttribute('aria-valuenow', String(pct));
 }
@@ -287,14 +274,14 @@ function finishStudySession() {
   els.viewDashboard.classList.add('view--active');
   els.viewDashboard.hidden = false;
   renderDashboard();
-  showToast(t(L(), 'toastSessionComplete'));
+  showToast(t('toastSessionComplete'));
 }
 
 function startReview() {
   const cards = loadCards();
   queue = dueTodayQueue(cards);
   if (queue.length === 0) {
-    showToast(t(L(), 'toastNoCardsDue'));
+    showToast(t('toastNoCardsDue'));
     return;
   }
   queueIndex = 0;
@@ -344,12 +331,12 @@ async function runAddCardFlow() {
   try {
     const card = await addCard(word, translation);
     if (card === null) {
-      window.alert(t(L(), 'alertDuplicateWord'));
+      window.alert(t('alertDuplicateWord'));
       return;
     }
     clearForm();
     renderDashboard();
-    showToast(t(L(), 'toastCardAdded'));
+    showToast(t('toastCardAdded'));
   } finally {
     if (submitBtn) submitBtn.disabled = false;
   }
@@ -368,7 +355,7 @@ els.btnStartReview.addEventListener('click', startReview);
 function restoreFooterSyncLabel() {
   els.btnForceSync.classList.remove('btn-footer-sync--success');
   els.btnForceSync.removeAttribute('aria-label');
-  if (els.btnFooterSyncText) els.btnFooterSyncText.textContent = t(L(), 'forceSync');
+  if (els.btnFooterSyncText) els.btnFooterSyncText.textContent = t('forceSync');
 }
 
 els.btnForceSync.addEventListener('click', async () => {
@@ -383,13 +370,13 @@ els.btnForceSync.addEventListener('click', async () => {
     if (r.ok) {
       els.btnForceSync.classList.add('btn-footer-sync--success');
       if (els.btnFooterSyncText) els.btnFooterSyncText.textContent = '✅';
-      els.btnForceSync.setAttribute('aria-label', t(L(), 'footerSyncCompleteAria'));
+      els.btnForceSync.setAttribute('aria-label', t('footerSyncCompleteAria'));
       footerSyncCheckTimer = setTimeout(() => {
         restoreFooterSyncLabel();
         footerSyncCheckTimer = null;
       }, 1500);
-    } else if (r.reason === 'offline') showToast(t(L(), 'toastOfflineCloud'));
-    else showToast(t(L(), 'toastSyncFailed'));
+    } else if (r.reason === 'offline') showToast(t('toastOfflineCloud'));
+    else showToast(t('toastSyncFailed'));
   } finally {
     els.btnForceSync.disabled = false;
     renderDashboard();
@@ -426,19 +413,7 @@ function registerSW() {
   }
 }
 
-applyLanguage(getLang());
-
-const btnLangCycle = document.getElementById('btn-lang-cycle');
-if (btnLangCycle) {
-  btnLangCycle.addEventListener('click', () => {
-    const i = LANG_CYCLE.indexOf(getCurrentLang());
-    const next = LANG_CYCLE[(i + 1) % LANG_CYCLE.length];
-    applyLanguage(next);
-    renderDashboard();
-    updateSyncLabel();
-    if (!els.viewStudy.hidden) updateSessionProgress();
-  });
-}
+applyUiStrings();
 
 await initDataStore({
   onUpdate: () => renderDashboard(),

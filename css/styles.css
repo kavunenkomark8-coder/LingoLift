@@ -65,46 +65,13 @@ body {
   gap: 10px;
 }
 
-.brand-flag {
-  position: relative;
-  width: 15.6px;
-  height: 15.6px;
-  padding: 0;
-  border: none;
+.brand-dot {
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
-  overflow: hidden;
-  cursor: pointer;
   flex-shrink: 0;
-  background: var(--bg-elevated);
-  box-shadow: 0 0 0 1px rgba(168, 85, 247, 0.45), 0 0 10px rgba(168, 85, 247, 0.2);
-  transition: box-shadow 0.2s ease, transform 0.12s ease;
-}
-
-.brand-flag:hover {
-  box-shadow: 0 0 0 1px var(--border-strong), 0 0 16px var(--violet-glow);
-}
-
-.brand-flag:active {
-  transform: scale(0.92);
-}
-
-.brand-flag:focus-visible {
-  outline: 2px solid var(--violet);
-  outline-offset: 2px;
-}
-
-.brand-flag .flag-svg {
-  display: none;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.brand-flag[data-active-lang='ru'] .flag-svg--ru,
-.brand-flag[data-active-lang='ua'] .flag-svg--ua,
-.brand-flag[data-active-lang='en'] .flag-svg--en,
-.brand-flag[data-active-lang='pt'] .flag-svg--pt {
-  display: block;
+  background: var(--violet);
+  box-shadow: 0 0 0 1px rgba(168, 85, 247, 0.5), 0 0 14px var(--violet-glow);
 }
 
 .btn-text-nowrap {
