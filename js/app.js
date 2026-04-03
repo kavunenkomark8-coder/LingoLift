@@ -60,6 +60,8 @@ function dueTodayQueue(cards) {
 }
 
 const els = {
+  app: document.getElementById('app'),
+  syncDynamicRow: document.getElementById('sync-dynamic-row'),
   viewDashboard: document.getElementById('view-dashboard'),
   viewStudy: document.getElementById('view-study'),
   progressCount: document.getElementById('progress-count'),
@@ -100,6 +102,7 @@ let footerSyncCheckTimer = null;
 let queue = [];
 let queueIndex = 0;
 let toastTimer = null;
+let frogPopGen = 0;
 
 function showToast(msg) {
   els.toast.textContent = msg;
@@ -186,12 +189,29 @@ async function runAutoTranslate() {
 function updateSyncLabel() {
   const s = getSyncState();
   els.syncStatus.classList.remove('sync-status--action');
-  if (s === 'offline') els.syncStatus.textContent = t('syncOffline');
-  else if (s === 'syncing') els.syncStatus.textContent = t('syncSyncing');
-  else if (s === 'error') {
+  els.app?.classList.remove('app--sync-active', 'app--syncing');
+  els.syncDynamicRow?.classList.remove('sync-dynamic-row--visible');
+
+  if (s === 'offline') {
+    els.syncStatus.textContent = t('syncOffline');
+    els.app?.classList.add('app--sync-active');
+    els.syncDynamicRow?.classList.add('sync-dynamic-row--visible');
+  } else if (s === 'syncing') {
+    els.syncStatus.innerHTML = `<span class="sync-spinner" aria-hidden="true"></span><span class="sync-syncing-text">${t('syncSyncing')}</span>`;
+    els.app?.classList.add('app--sync-active', 'app--syncing');
+    els.syncDynamicRow?.classList.add('sync-dynamic-row--visible');
+  } else if (s === 'error') {
     els.syncStatus.textContent = t('syncError');
     els.syncStatus.classList.add('sync-status--action');
-  } else els.syncStatus.textContent = '';
+    els.app?.classList.add('app--sync-active');
+    els.syncDynamicRow?.classList.add('sync-dynamic-row--visible');
+  } else {
+    els.syncStatus.textContent = '';
+  }
+}
+
+function setStudyChromeActive(active) {
+  els.app?.classList.toggle('app--study', active);
 }
 
 function renderDashboard() {
@@ -260,13 +280,16 @@ function showStudyCard() {
   }
   els.studyFront.textContent = card.word;
   els.studyBack.textContent = card.translation;
-  els.studyBackWrap.hidden = true;
+  els.studyBackWrap.classList.remove('flash-back-wrap--revealed');
+  els.studyBackWrap.classList.add('flash-back-wrap--closed');
+  els.studyBackWrap.setAttribute('aria-hidden', 'true');
   els.btnShowAnswer.hidden = false;
   els.gradeRow.hidden = true;
   updateSessionProgress();
 }
 
 function finishStudySession() {
+  setStudyChromeActive(false);
   els.viewStudy.classList.remove('view--active');
   els.viewStudy.hidden = true;
   els.viewDashboard.classList.add('view--active');
@@ -283,6 +306,7 @@ function startReview() {
     return;
   }
   queueIndex = 0;
+  setStudyChromeActive(true);
   els.viewDashboard.classList.remove('view--active');
   els.viewDashboard.hidden = true;
   els.viewStudy.classList.add('view--active');
@@ -383,6 +407,7 @@ els.btnForceSync.addEventListener('click', async () => {
 els.btnExitStudy.addEventListener('click', () => {
   queue = [];
   queueIndex = 0;
+  setStudyChromeActive(false);
   els.viewStudy.classList.remove('view--active');
   els.viewStudy.hidden = true;
   els.viewDashboard.classList.add('view--active');
@@ -391,7 +416,10 @@ els.btnExitStudy.addEventListener('click', () => {
 });
 
 els.btnShowAnswer.addEventListener('click', () => {
-  els.studyBackWrap.hidden = false;
+  els.studyBackWrap.classList.remove('flash-back-wrap--closed');
+  void els.studyBackWrap.offsetWidth;
+  els.studyBackWrap.classList.add('flash-back-wrap--revealed');
+  els.studyBackWrap.setAttribute('aria-hidden', 'false');
   els.btnShowAnswer.hidden = true;
   els.gradeRow.hidden = false;
 });
@@ -412,6 +440,23 @@ function registerSW() {
 }
 
 applyUiStrings();
+
+document.getElementById('brand-logo-hit')?.addEventListener('click', () => {
+  const frog = document.querySelector('.brand-frog');
+  if (!frog) return;
+  const gen = ++frogPopGen;
+  frog.classList.remove('brand-frog--pop');
+  void frog.offsetWidth;
+  frog.classList.add('brand-frog--pop');
+  frog.addEventListener(
+    'animationend',
+    () => {
+      if (gen !== frogPopGen) return;
+      frog.classList.remove('brand-frog--pop');
+    },
+    { once: true }
+  );
+});
 
 document.getElementById('howto-toggle')?.addEventListener('click', () => {
   const panel = document.querySelector('.howto-panel');

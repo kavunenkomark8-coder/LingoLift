@@ -27,13 +27,20 @@
 <body>
   <div id="app" class="app">
     <header class="top-bar">
+      <h1 class="visually-hidden">LingoLift</h1>
       <div class="brand">
         <span class="brand-dot" aria-hidden="true"></span>
-        <h1 class="brand-name">LingoLift</h1>
+        <button type="button" class="brand-hit" id="brand-logo-hit" aria-label="LingoLift">
+          <span class="brand-name">LingoLift</span>
+          <span class="brand-frog" aria-hidden="true">🐸</span>
+        </button>
       </div>
       <p class="tagline" data-i18n="tagline">Spaced repetition</p>
-      <p id="sync-status" class="sync-status" role="status"></p>
     </header>
+
+    <div id="sync-dynamic-row" class="sync-dynamic-row" aria-live="polite">
+      <p id="sync-status" class="sync-status sync-status--dynamic" role="status"></p>
+    </div>
 
     <div class="panel howto-panel howto-panel--compact">
       <button type="button" class="howto-summary" id="howto-toggle" aria-expanded="false" aria-controls="howto-content" data-i18n="howtoTitle">How to use</button>
@@ -133,7 +140,7 @@
         <div class="study-card-wrap">
           <div id="study-card" class="flash-card">
             <p id="study-front" class="flash-front"></p>
-            <div id="study-back-wrap" class="flash-back-wrap" hidden>
+            <div id="study-back-wrap" class="flash-back-wrap flash-back-wrap--closed" aria-hidden="true">
               <p class="flash-divider" aria-hidden="true"></p>
               <p id="study-back" class="flash-back"></p>
             </div>
