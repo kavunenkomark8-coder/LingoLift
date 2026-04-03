@@ -109,18 +109,43 @@ function showToast(msg) {
   }, 2200);
 }
 
-const MYMEMORY_API = 'https://api.mymemory.translated.net/get';
-
-/** Target ISO code for MyMemory (Portuguese → UI language). */
-function mymemoryTargetCode() {
+/** Google GTX target lang: Portuguese → UI language (en for EN/PT). */
+function gtxTargetLang() {
   switch (getCurrentLang()) {
     case 'ru':
       return 'ru';
     case 'ua':
       return 'uk';
+    case 'en':
+    case 'pt':
     default:
       return 'en';
   }
+}
+
+/**
+ * @param {unknown} data Parsed JSON from translate_a/single
+ * @returns {string}
+ */
+function parseGtxTranslation(data) {
+  const row = data?.[0];
+  if (!Array.isArray(row)) return '';
+  let out = '';
+  for (const seg of row) {
+    if (Array.isArray(seg) && typeof seg[0] === 'string') out += seg[0];
+  }
+  return out.trim();
+}
+
+async function fetchGtxTranslation(word) {
+  const tl = gtxTargetLang();
+  const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=pt&tl=${tl}&dt=t&q=${encodeURIComponent(word)}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('http');
+  const data = await res.json();
+  const text = parseGtxTranslation(data);
+  if (!text) throw new Error('parse');
+  return text;
 }
 
 function shakeWordField() {
@@ -132,11 +157,19 @@ function shakeWordField() {
   setTimeout(() => w.classList.remove('field-word-wrap--shake'), 500);
 }
 
+function flashTranslationFieldBorder() {
+  const wrap = els.inputTranslation?.closest('.field-input-wrap');
+  if (!wrap) return;
+  wrap.classList.remove('field-input-wrap--flash');
+  void wrap.offsetWidth;
+  wrap.classList.add('field-input-wrap--flash');
+  setTimeout(() => wrap.classList.remove('field-input-wrap--flash'), 700);
+}
+
 async function runAutoTranslate() {
   const word = els.inputWord.value.trim();
   if (!word) {
     shakeWordField();
-    showToast(t(L(), 'toastEnterWord'));
     return;
   }
   const btn = els.btnTranslateWand;
@@ -144,18 +177,17 @@ async function runAutoTranslate() {
   btn.disabled = true;
   btn.classList.add('is-busy');
   try {
-    const target = mymemoryTargetCode();
-    const url = `${MYMEMORY_API}?q=${encodeURIComponent(word)}&langpair=pt|${target}`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('http');
-    const data = await res.json();
-    const text = data?.responseData?.translatedText;
-    const st = data?.responseStatus;
-    if (Number(st) !== 200 || !text || typeof text !== 'string') throw new Error('api');
-    if (text.includes('MYMEMORY WARNING')) throw new Error('quota');
-    els.inputTranslation.value = text.trim();
+    const text = await fetchGtxTranslation(word);
+    const normWord = word.toLowerCase();
+    const normOut = text.toLowerCase();
+    if (normOut === normWord) {
+      showToast(t(L(), 'toastTranslationNotFound'));
+      return;
+    }
+    els.inputTranslation.value = text;
+    flashTranslationFieldBorder();
   } catch {
-    window.alert(t(L(), 'alertTranslationFailed'));
+    showToast(t(L(), 'alertTranslationFailed'));
   } finally {
     btn.disabled = false;
     btn.classList.remove('is-busy');
@@ -334,6 +366,8 @@ if (els.btnTranslateWand) {
 els.btnStartReview.addEventListener('click', startReview);
 
 function restoreFooterSyncLabel() {
+  els.btnForceSync.classList.remove('btn-footer-sync--success');
+  els.btnForceSync.removeAttribute('aria-label');
   if (els.btnFooterSyncText) els.btnFooterSyncText.textContent = t(L(), 'forceSync');
 }
 
@@ -347,12 +381,17 @@ els.btnForceSync.addEventListener('click', async () => {
   try {
     const r = await forceFullSyncFromSupabase();
     if (r.ok) {
+      els.btnForceSync.classList.add('btn-footer-sync--success');
       if (els.btnFooterSyncText) els.btnFooterSyncText.textContent = '✅';
+      els.btnForceSync.setAttribute(
+        'aria-label',
+        t(L(), 'toastSynced', { count: r.count ?? 0 })
+      );
       showToast(t(L(), 'toastSynced', { count: r.count ?? 0 }));
       footerSyncCheckTimer = setTimeout(() => {
         restoreFooterSyncLabel();
         footerSyncCheckTimer = null;
-      }, 1100);
+      }, 1500);
     } else if (r.reason === 'offline') showToast(t(L(), 'toastOfflineCloud'));
     else showToast(t(L(), 'toastSyncFailed'));
   } finally {

@@ -1,0 +1,11 @@
+# LingoLift / Anki PWA — Cursor rules
+
+## Project memory (read first)
+
+Before answering questions about architecture, sync, i18n, the magic-wand translation flow, or UI conventions for this repo, **read `project-memory.md` in the project root**. It is the long-term handoff for this codebase.
+
+When you complete work that changes versioning (e.g. service worker cache name), cloud/sync behavior, translation integration, or documented UI contracts, **update `project-memory.md`** in the same change so future sessions stay accurate.
+
+## Scope
+
+These instructions apply to the whole workspace unless a more specific rule overrides them.
