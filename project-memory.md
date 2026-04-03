@@ -1,7 +1,9 @@
 # LingoLift — project memory (for AI context)
 
 **Document version:** 9.1 (memory snapshot)  
-**App / Service Worker cache:** `lingolift-v9` (`sw.js` → `CACHE = 'lingolift-v9'`)
+**App / Service Worker cache:** `lingolift-v9.1` (`sw.js` → `CACHE = 'lingolift-v9.1'`)
+
+**UI simplified (v9.1):** Cloud sync success shows **only ✅** on the footer button for ~1.5s — **no toast** and **no card-count copy** for that action (screen readers get a short generic `footerSyncCompleteAria`, not a count).
 
 ---
 
@@ -47,7 +49,7 @@
 - **Theme:** Dark UI; primary accent **`--violet` / `--violet-glow`** (`css/styles.css`), Outfit + JetBrains Mono.
 - **Headers / titles:** Many use centered or single-line patterns (e.g. `panel-title--single-line`, `howto-summary` centered with ellipsis).
 - **Buttons:** Several primary/actions use **`btn-text-nowrap`** to avoid wrapped labels.
-- **Footer Cloud Sync:** `#btn-force-sync` — label font scaled up (`calc(0.65rem * 2.25)`). On successful **force sync**, label is replaced by **✅ only** for **1.5s** (`btn-footer-sync--success`), then restored; toast shows sync count. Localized `forceSync` strings (e.g. Cloud sync / Облако / Хмара / Sincro).
+- **Footer Cloud Sync:** `#btn-force-sync` — label font scaled up (`calc(0.65rem * 2.25)`). On successful **force sync**, label is replaced by **✅ only** for **1.5s** (`btn-footer-sync--success`), then restored — **no success toast**, no synced-card count in UI. Localized `forceSync` strings (e.g. Cloud sync / Облако / Хмара / Sincro). Optional a11y: `footerSyncCompleteAria` (no count).
 
 ---
 

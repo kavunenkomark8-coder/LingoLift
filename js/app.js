@@ -383,11 +383,7 @@ els.btnForceSync.addEventListener('click', async () => {
     if (r.ok) {
       els.btnForceSync.classList.add('btn-footer-sync--success');
       if (els.btnFooterSyncText) els.btnFooterSyncText.textContent = '✅';
-      els.btnForceSync.setAttribute(
-        'aria-label',
-        t(L(), 'toastSynced', { count: r.count ?? 0 })
-      );
-      showToast(t(L(), 'toastSynced', { count: r.count ?? 0 }));
+      els.btnForceSync.setAttribute('aria-label', t(L(), 'footerSyncCompleteAria'));
       footerSyncCheckTimer = setTimeout(() => {
         restoreFooterSyncLabel();
         footerSyncCheckTimer = null;
