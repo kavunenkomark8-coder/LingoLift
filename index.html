@@ -27,19 +27,17 @@
 <body>
   <div id="app" class="app">
     <header class="top-bar">
-      <h1 class="visually-hidden">LingoLift</h1>
       <div class="brand">
         <span class="brand-dot" aria-hidden="true"></span>
-        <button type="button" class="brand-hit" id="brand-logo-hit" aria-label="LingoLift">
-          <span class="brand-name">LingoLift</span>
-          <span class="brand-frog" aria-hidden="true">🐸</span>
-        </button>
+        <h1 class="brand-name">LingoLift</h1>
       </div>
       <p class="tagline" data-i18n="tagline">Spaced repetition</p>
     </header>
 
     <div id="sync-dynamic-row" class="sync-dynamic-row" aria-live="polite">
-      <p id="sync-status" class="sync-status sync-status--dynamic" role="status"></p>
+      <div class="sync-dynamic-row__inner">
+        <p id="sync-status" class="sync-status sync-status--dynamic" role="status"></p>
+      </div>
     </div>
 
     <div class="panel howto-panel howto-panel--compact">

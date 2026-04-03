@@ -1,15 +1,19 @@
 # LingoLift — project memory (for AI context)
 
-**Document version:** 13  
-**App / Service Worker cache:** `lingolift-v13` (`sw.js` → `CACHE = 'lingolift-v13'`)
+**Document version:** 13.1  
+**App / Service Worker cache:** `lingolift-v13.1` (`sw.js` → `CACHE = 'lingolift-v13.1'`)
 
-**v13:** Added Frog logo animation. Implemented dynamic layout shifting during sync. Optimized Review UI: hidden footer/instructions and enlarged feedback buttons.
+**v13.1:** Removed frog animation. Finalized smooth dynamic syncing layout and focused review UI.
+
+**v13 (superseded details):** Dynamic sync strip, study-mode chrome hiding, enlarged grade buttons — retained; **frog easter egg removed** in v13.1.
 
 **Major pivot (v11, still applies): English-only UI.** Multi-language support (RU, UA, PT) and the header language switcher were removed for a cleaner, unified international experience. The app is **English-only**; `<html lang="en">` is fixed. **Core focus remains learning Portuguese vocabulary** (words often in PT, translations often in English). Legacy `localStorage` key `lingolift-lang` is cleared on load.
 
 **v12 UI (still applies):** The Add card form includes **Source language** and **Target language** selects (Google codes `pt`, `en`, `ru`, `uk`). Defaults: source **PT**, target **EN**. The magic wand (🪄) calls Google GTX with **`sl`** and **`tl`** from those selects.
 
-**v13 brand / motion:** Clicking **`#brand-logo-hit`** (LingoLift title button) runs a short **frog** (🐸) pop animation (`.brand-frog` + `@keyframes brand-frog-pop`). **Sync strip:** `#sync-dynamic-row` sits **between** the tagline and “How to use”; when sync state is **offline**, **syncing** (spinner + “Syncing…”), or **error**, it expands (`.sync-dynamic-row--visible`) with **`transition: all 0.3s ease-in-out`**. `#app` gets **`app--sync-active`** when the strip has content; **`app--syncing`** while **`getSyncState() === 'syncing'`** — tagline shifts up slightly (`transform`) to make room. **Study focus:** **`app--study`** on `#app` during the Repeat session hides **footer Cloud sync**, **How to use**, and the **sync strip**; **Hard/Easy** buttons are larger in `#view-study`. Answer side uses **`.flash-back-wrap--closed` / `--revealed`** (no `hidden`) for slide/fade “unroll”.
+**v13.1 layout / sync:** **`#sync-dynamic-row`** sits between the tagline and “How to use”, with inner **`.sync-dynamic-row__inner`** so the strip uses **`display: grid; grid-template-rows: 0fr` → `1fr`** when **`.sync-dynamic-row--visible`** (smooth height, no `max-height` jump). Tagline uses the same easing (**`cubic-bezier(0.4, 0, 0.2, 1)`**, ~**0.35s**) for **`transform`** / **`margin`** when **`#app`** has **`app--sync-active`** (single shift — no separate “syncing vs offline” tagline jump). Inner **opacity** fades with the strip. **`app--syncing`** remains on `#app` while **`getSyncState() === 'syncing'`** (spinner + “Syncing…” HTML in **`#sync-status`**).
+
+**v13.1 review:** **`app--study`** hides **footer Cloud sync**, **How to use**, and the **sync strip**; **Hard/Easy** in **`#view-study`** use large tap targets (**`min-height` ~4.75rem**, **`min-width: 44px`**, **`touch-action: manipulation`**). Translation/answer uses **`.flash-back-wrap--closed` / `--revealed`** with **`--reveal-ease`** for slide + fade.
 
 ---
 
@@ -24,7 +28,7 @@
 
 ## Brand / header
 
-- **Minimal header:** Violet **dot** (`.brand-dot`) next to a **button** `.brand-hit` with visible title **LingoLift** and hidden **`<h1 class="visually-hidden">`**. **Frog** easter egg on logo click.
+- **Minimal header:** Violet **dot** (`.brand-dot`) next to static **`h1.brand-name`** (“LingoLift” gradient). No logo button / frog.
 
 ---
 

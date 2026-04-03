@@ -102,7 +102,6 @@ let footerSyncCheckTimer = null;
 let queue = [];
 let queueIndex = 0;
 let toastTimer = null;
-let frogPopGen = 0;
 
 function showToast(msg) {
   els.toast.textContent = msg;
@@ -440,23 +439,6 @@ function registerSW() {
 }
 
 applyUiStrings();
-
-document.getElementById('brand-logo-hit')?.addEventListener('click', () => {
-  const frog = document.querySelector('.brand-frog');
-  if (!frog) return;
-  const gen = ++frogPopGen;
-  frog.classList.remove('brand-frog--pop');
-  void frog.offsetWidth;
-  frog.classList.add('brand-frog--pop');
-  frog.addEventListener(
-    'animationend',
-    () => {
-      if (gen !== frogPopGen) return;
-      frog.classList.remove('brand-frog--pop');
-    },
-    { once: true }
-  );
-});
 
 document.getElementById('howto-toggle')?.addEventListener('click', () => {
   const panel = document.querySelector('.howto-panel');

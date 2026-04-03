@@ -1,4 +1,4 @@
-const CACHE = 'lingolift-v13';
+const CACHE = 'lingolift-v13.1';
 const ASSETS = [
   './',
   './index.html',
