@@ -1,4 +1,4 @@
-const CACHE = 'lingolift-v7';
+const CACHE = 'lingolift-v8';
 const ASSETS = [
   './',
   './index.html',
@@ -38,6 +38,11 @@ self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
 
   if (url.hostname.endsWith('supabase.co')) {
+    e.respondWith(fetch(e.request));
+    return;
+  }
+
+  if (url.hostname === 'api.mymemory.translated.net') {
     e.respondWith(fetch(e.request));
     return;
   }

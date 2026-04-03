@@ -92,11 +92,16 @@
           <form id="form-add-card" class="card-form">
             <label class="field">
               <span class="field-label field-label--single-line" data-i18n="fieldWord">Word</span>
-              <input type="text" id="input-word" name="word" autocomplete="off" data-i18n-placeholder="placeholderWord" placeholder="e.g. casa" required />
+              <div class="field-word-wrap" id="field-word-wrap">
+                <input type="text" id="input-word" name="word" autocomplete="off" data-i18n-placeholder="placeholderWord" placeholder="e.g. casa" required />
+              </div>
             </label>
             <label class="field">
               <span class="field-label field-label--single-line" data-i18n="fieldTranslation">Translation</span>
-              <input type="text" id="input-translation" name="translation" autocomplete="off" data-i18n-placeholder="placeholderTranslation" placeholder="e.g. house" required />
+              <div class="field-input-wrap">
+                <input class="field-input--with-wand" type="text" id="input-translation" name="translation" autocomplete="off" data-i18n-placeholder="placeholderTranslation" placeholder="e.g. house" required />
+                <button type="button" class="btn-translate-wand" id="btn-translate-wand" data-i18n-title="translateWandTooltip" title="Auto-translate" aria-label="Auto-translate">🪄</button>
+              </div>
             </label>
             <button type="submit" class="btn btn--secondary btn--block btn-text-nowrap" data-i18n="addCardSubmit">Add card</button>
           </form>

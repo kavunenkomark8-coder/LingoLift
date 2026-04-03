@@ -59,6 +59,9 @@ export const translations = {
     ariaDashboard: 'Dashboard',
     ariaStudy: 'Study',
     langCycleAria: 'Change language',
+    translateWandTooltip: 'Auto-translate',
+    toastEnterWord: 'Enter a word first.',
+    alertTranslationFailed: 'Translation failed',
   },
   ru: {
     tagline: 'Интервальные повторения',
@@ -105,6 +108,9 @@ export const translations = {
     ariaDashboard: 'Главная',
     ariaStudy: 'Повтор',
     langCycleAria: 'Язык',
+    translateWandTooltip: 'Автоперевод',
+    toastEnterWord: 'Сначала введите слово.',
+    alertTranslationFailed: 'Translation failed',
   },
   ua: {
     tagline: 'Інтервальні повторення',
@@ -151,6 +157,9 @@ export const translations = {
     ariaDashboard: 'Головна',
     ariaStudy: 'Повтор',
     langCycleAria: 'Мова',
+    translateWandTooltip: 'Автопереклад',
+    toastEnterWord: 'Спочатку введіть слово.',
+    alertTranslationFailed: 'Translation failed',
   },
   pt: {
     tagline: 'Repetição espaçada',
@@ -197,6 +206,9 @@ export const translations = {
     ariaDashboard: 'Painel',
     ariaStudy: 'Estudo',
     langCycleAria: 'Idioma',
+    translateWandTooltip: 'Traduzir',
+    toastEnterWord: 'Escreva a palavra primeiro.',
+    alertTranslationFailed: 'Translation failed',
   },
 };
 
@@ -264,6 +276,14 @@ export function applyLanguage(lang) {
     const key = el.getAttribute('data-i18n-placeholder');
     if (!key || !('placeholder' in el)) return;
     el.placeholder = t(currentLang, key);
+  });
+
+  document.querySelectorAll('[data-i18n-title]').forEach((el) => {
+    const key = el.getAttribute('data-i18n-title');
+    if (!key) return;
+    const s = t(currentLang, key);
+    el.title = s;
+    el.setAttribute('aria-label', s);
   });
 
   const flagBtn = document.getElementById('btn-lang-cycle');

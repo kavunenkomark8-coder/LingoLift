@@ -70,6 +70,8 @@ const els = {
   formAddCard: document.getElementById('form-add-card'),
   inputWord: document.getElementById('input-word'),
   inputTranslation: document.getElementById('input-translation'),
+  fieldWordWrap: document.getElementById('field-word-wrap'),
+  btnTranslateWand: document.getElementById('btn-translate-wand'),
   statTotal: document.getElementById('stat-total'),
   btnExitStudy: document.getElementById('btn-exit-study'),
   studyRemainingLabel: document.getElementById('study-remaining-label'),
@@ -105,6 +107,59 @@ function showToast(msg) {
     els.toast.hidden = true;
     updateSyncLabel();
   }, 2200);
+}
+
+const MYMEMORY_API = 'https://api.mymemory.translated.net/get';
+
+/** Target ISO code for MyMemory (Portuguese → UI language). */
+function mymemoryTargetCode() {
+  switch (getCurrentLang()) {
+    case 'ru':
+      return 'ru';
+    case 'ua':
+      return 'uk';
+    default:
+      return 'en';
+  }
+}
+
+function shakeWordField() {
+  const w = els.fieldWordWrap;
+  if (!w) return;
+  w.classList.remove('field-word-wrap--shake');
+  void w.offsetWidth;
+  w.classList.add('field-word-wrap--shake');
+  setTimeout(() => w.classList.remove('field-word-wrap--shake'), 500);
+}
+
+async function runAutoTranslate() {
+  const word = els.inputWord.value.trim();
+  if (!word) {
+    shakeWordField();
+    showToast(t(L(), 'toastEnterWord'));
+    return;
+  }
+  const btn = els.btnTranslateWand;
+  if (!btn) return;
+  btn.disabled = true;
+  btn.classList.add('is-busy');
+  try {
+    const target = mymemoryTargetCode();
+    const url = `${MYMEMORY_API}?q=${encodeURIComponent(word)}&langpair=pt|${target}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('http');
+    const data = await res.json();
+    const text = data?.responseData?.translatedText;
+    const st = data?.responseStatus;
+    if (Number(st) !== 200 || !text || typeof text !== 'string') throw new Error('api');
+    if (text.includes('MYMEMORY WARNING')) throw new Error('quota');
+    els.inputTranslation.value = text.trim();
+  } catch {
+    window.alert(t(L(), 'alertTranslationFailed'));
+  } finally {
+    btn.disabled = false;
+    btn.classList.remove('is-busy');
+  }
 }
 
 function L() {
@@ -269,6 +324,12 @@ async function runAddCardFlow() {
 }
 
 els.formAddCard.addEventListener('submit', onAddCardFormSubmit);
+
+if (els.btnTranslateWand) {
+  els.btnTranslateWand.addEventListener('click', () => {
+    void runAutoTranslate();
+  });
+}
 
 els.btnStartReview.addEventListener('click', startReview);
 
