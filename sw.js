@@ -1,4 +1,4 @@
-const CACHE = 'lingolift-v16';
+const CACHE = 'lingolift-v16.1';
 
 const TESSERACT_CDN = [
   'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js',

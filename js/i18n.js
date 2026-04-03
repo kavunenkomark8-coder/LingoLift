@@ -52,6 +52,8 @@ export const strings = {
   btnOcrCameraTitle: 'Scan word from photo',
   ocrScanning: 'Scanning…',
   ocrFailed: 'Could not read text from photo',
+  ocrTimeout: 'Scan timed out. Try again.',
+  ocrFailedNetwork: 'OCR failed: Check internet for first-time setup.',
   toastTranslationNotFound: 'Translation not found',
   alertTranslationFailed: 'Translation failed',
 };

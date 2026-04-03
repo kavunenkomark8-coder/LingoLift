@@ -1,7 +1,9 @@
 # LingoLift — project memory (for AI context)
 
-**Document version:** 16  
-**App / Service Worker cache:** `lingolift-v16` (`sw.js` → `CACHE = 'lingolift-v16'`)
+**Document version:** 16.1  
+**App / Service Worker cache:** `lingolift-v16.1` (`sw.js` → `CACHE = 'lingolift-v16.1'`)
+
+**v16.1:** **Camera OCR** hardened: **15s timeout** (`Promise.race`), **`try`/`catch`** with **`console.error('[LingoLift OCR]', err)`**, **`finally`** always clears **`setWordOcrScanning(false)`**, terminates worker, resets **`#input-photo-ocr`** (`value = ''`). Toasts: **`ocrTimeout`**, **`ocrFailedNetwork`** when fetch fails (first-time **`por`** traineddata download), else **`ocrFailed`**. **`initOcrWorkerPor`** calls **`loadLanguage`/`initialize`** when present (wrapped in **`try`/`catch`**). **`sw.js`** cache bumped for clients to pick up **`app.js`** changes.
 
 **v16:** Integrated **Tesseract.js** for OCR. Added **camera-to-word** workflow for rapid card creation: **`📷`** next to Word opens **`#input-photo-ocr`** (`capture="environment"`); **`Tesseract.createWorker('por')`** + **`recognize`**, first-line text into **`#input-word`**, then **`runAutoTranslate()`** (magic wand). Overlay **`#field-word-ocr-overlay`** + **`ocrScanning`** while scanning; worker **`terminate()`** and file input cleared after use. Script: **`https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js`** (before **`app.js`**). **`sw.js`** precaches **`tesseract.min.js`** + **`worker.min.js`** and uses **cache-first** for **`cdn.jsdelivr.net`** (offline after first load; language data may still fetch on first OCR).
 
