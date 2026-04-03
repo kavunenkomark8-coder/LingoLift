@@ -67,8 +67,8 @@ body {
 
 .brand-flag {
   position: relative;
-  width: 12px;
-  height: 12px;
+  width: 15.6px;
+  height: 15.6px;
   padding: 0;
   border: none;
   border-radius: 50%;
@@ -135,6 +135,13 @@ body {
   letter-spacing: 0.04em;
 }
 
+.panel-title.panel-title--add-card {
+  text-align: center;
+  width: 100%;
+  font-size: 1.02rem;
+  font-weight: 600;
+}
+
 .field-label--single-line {
   white-space: nowrap;
   font-size: 0.76rem;
@@ -163,19 +170,27 @@ body {
 
 .btn-footer-sync {
   font-family: var(--font);
-  font-size: 0.65rem;
+  font-size: calc(0.65rem * 1.5);
   font-weight: 500;
   letter-spacing: 0.02em;
   color: #5a5a6c;
   background: transparent;
   border: none;
-  padding: 0.3rem 0.45rem;
+  padding: 0.35rem 0.5rem;
   cursor: pointer;
   white-space: nowrap;
   max-width: 100%;
   text-decoration: underline;
   text-underline-offset: 2px;
   transition: color 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 1.5em;
+}
+
+.btn-footer-sync__text {
+  display: inline-block;
 }
 
 .btn-footer-sync:hover,
@@ -190,7 +205,7 @@ body {
 
 .brand-name {
   margin: 0;
-  font-size: 1.65rem;
+  font-size: calc(1.65rem * 1.15);
   font-weight: 700;
   letter-spacing: -0.03em;
   background: linear-gradient(90deg, #fff, var(--violet));
@@ -354,6 +369,7 @@ body {
   border-radius: var(--radius-sm);
   padding: 0.75rem 1.2rem;
   transition: transform 0.12s ease, box-shadow 0.2s, background 0.2s;
+  white-space: nowrap;
 }
 
 .btn:active {
@@ -364,6 +380,15 @@ body {
   padding: 0.95rem 1.5rem;
   font-size: 1.05rem;
   border-radius: 12px;
+}
+
+.btn-repeat-primary.btn--large {
+  padding-left: 3rem;
+  padding-right: 3rem;
+  min-width: min(100%, 22rem);
+  margin-left: auto;
+  margin-right: auto;
+  display: block;
 }
 
 .btn--block {
@@ -548,23 +573,7 @@ body {
   font-weight: 600;
 }
 
-.howto-sync-note {
-  margin: 0.32rem 0 0;
-  font-size: 0.68rem;
-  line-height: 1.4;
-  color: #656575;
-}
-
-.howto-sync-note:first-of-type {
-  margin-top: 0.35rem;
-}
-
-.howto-sync-note strong {
-  color: #858598;
-  font-weight: 600;
-}
-
-.howto-sync-note code {
+.howto-list--compact code {
   font-family: var(--font-mono);
   font-size: 0.62rem;
   color: #7c6b9e;

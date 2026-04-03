@@ -49,7 +49,7 @@
         </button>
         <h1 class="brand-name">LingoLift</h1>
       </div>
-      <p class="tagline" data-i18n="tagline">Vocabulary · Spaced repetition</p>
+      <p class="tagline" data-i18n="tagline">Spaced repetition</p>
       <p id="sync-status" class="sync-status" role="status"></p>
     </header>
 
@@ -61,9 +61,9 @@
           <li data-i18n-html="howtoLi2"></li>
           <li data-i18n-html="howtoLi3"></li>
           <li data-i18n-html="howtoLi4"></li>
+          <li data-i18n-html="howtoLi5"></li>
+          <li data-i18n-html="howtoLi6"></li>
         </ul>
-        <p class="howto-sync-note" data-i18n-html="syncHelpBody1"></p>
-        <p class="howto-sync-note" data-i18n-html="syncHelpBody2"></p>
       </div>
     </details>
 
@@ -81,14 +81,14 @@
         </div>
 
         <div class="panel actions-panel">
-          <button type="button" class="btn btn--primary btn--large btn-text-nowrap" id="btn-start-review" data-i18n="startReview">
-            Start review
+          <button type="button" class="btn btn--primary btn--large btn-text-nowrap btn-repeat-primary" id="btn-start-review" data-i18n="startReview">
+            Repeat
           </button>
           <p id="review-hint" class="hint hint--muted"></p>
         </div>
 
         <div class="panel form-panel">
-          <h2 class="panel-title panel-title--single-line" data-i18n="addCardTitle">Add card</h2>
+          <h2 class="panel-title panel-title--single-line panel-title--add-card" data-i18n="addCardTitle">Add card</h2>
           <form id="form-add-card" class="card-form">
             <label class="field">
               <span class="field-label field-label--single-line" data-i18n="fieldWord">Word</span>
@@ -145,7 +145,9 @@
     </main>
 
     <footer class="app-footer">
-      <button type="button" class="btn-footer-sync" id="btn-force-sync" data-i18n="forceSync">Cloud sync</button>
+      <button type="button" class="btn-footer-sync" id="btn-force-sync">
+        <span class="btn-footer-sync__text" data-i18n="forceSync">Cloud sync</span>
+      </button>
     </footer>
 
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>

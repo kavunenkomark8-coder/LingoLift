@@ -85,8 +85,12 @@ const els = {
   toast: document.getElementById('toast'),
   syncStatus: document.getElementById('sync-status'),
   btnForceSync: document.getElementById('btn-force-sync'),
+  btnFooterSyncText: document.querySelector('#btn-force-sync .btn-footer-sync__text'),
   accountHint: document.getElementById('account-hint'),
 };
+
+/** @type {ReturnType<typeof setTimeout> | null} */
+let footerSyncCheckTimer = null;
 
 /** @type {{ id: string, word: string, translation: string, nextReview: number }[]} */
 let queue = [];
@@ -268,12 +272,27 @@ els.formAddCard.addEventListener('submit', onAddCardFormSubmit);
 
 els.btnStartReview.addEventListener('click', startReview);
 
+function restoreFooterSyncLabel() {
+  if (els.btnFooterSyncText) els.btnFooterSyncText.textContent = t(L(), 'forceSync');
+}
+
 els.btnForceSync.addEventListener('click', async () => {
+  if (footerSyncCheckTimer) {
+    clearTimeout(footerSyncCheckTimer);
+    footerSyncCheckTimer = null;
+  }
+  restoreFooterSyncLabel();
   els.btnForceSync.disabled = true;
   try {
     const r = await forceFullSyncFromSupabase();
-    if (r.ok) showToast(t(L(), 'toastSynced', { count: r.count ?? 0 }));
-    else if (r.reason === 'offline') showToast(t(L(), 'toastOfflineCloud'));
+    if (r.ok) {
+      if (els.btnFooterSyncText) els.btnFooterSyncText.textContent = '✅';
+      showToast(t(L(), 'toastSynced', { count: r.count ?? 0 }));
+      footerSyncCheckTimer = setTimeout(() => {
+        restoreFooterSyncLabel();
+        footerSyncCheckTimer = null;
+      }, 1100);
+    } else if (r.reason === 'offline') showToast(t(L(), 'toastOfflineCloud'));
     else showToast(t(L(), 'toastSyncFailed'));
   } finally {
     els.btnForceSync.disabled = false;
