@@ -19,6 +19,8 @@ export const strings = {
   reviewHintEmptyDeck: 'Add your first card.',
   reviewHintNoneToday: 'All done for today!',
   addCardTitle: 'Add card',
+  fieldSourceLang: 'Source language',
+  fieldTargetLang: 'Target language',
   fieldWord: 'Word',
   fieldTranslation: 'Translation',
   placeholderWord: 'e.g. casa',

@@ -68,6 +68,8 @@ const els = {
   btnStartReview: document.getElementById('btn-start-review'),
   reviewHint: document.getElementById('review-hint'),
   formAddCard: document.getElementById('form-add-card'),
+  selectLangSource: document.getElementById('select-lang-source'),
+  selectLangTarget: document.getElementById('select-lang-target'),
   inputWord: document.getElementById('input-word'),
   inputTranslation: document.getElementById('input-translation'),
   fieldWordWrap: document.getElementById('field-word-wrap'),
@@ -109,11 +111,6 @@ function showToast(msg) {
   }, 2200);
 }
 
-/** Google GTX: Portuguese → English (app UI is English-only). */
-function gtxTargetLang() {
-  return 'en';
-}
-
 /**
  * @param {unknown} data Parsed JSON from translate_a/single
  * @returns {string}
@@ -129,8 +126,9 @@ function parseGtxTranslation(data) {
 }
 
 async function fetchGtxTranslation(word) {
-  const tl = gtxTargetLang();
-  const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=pt&tl=${tl}&dt=t&q=${encodeURIComponent(word)}`;
+  const sl = els.selectLangSource?.value?.trim() || 'pt';
+  const tl = els.selectLangTarget?.value?.trim() || 'en';
+  const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(sl)}&tl=${encodeURIComponent(tl)}&dt=t&q=${encodeURIComponent(word)}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error('http');
   const data = await res.json();
@@ -414,6 +412,17 @@ function registerSW() {
 }
 
 applyUiStrings();
+
+document.getElementById('howto-toggle')?.addEventListener('click', () => {
+  const panel = document.querySelector('.howto-panel');
+  const btn = document.getElementById('howto-toggle');
+  const content = document.getElementById('howto-content');
+  if (!panel || !btn) return;
+  const open = !panel.classList.contains('howto-panel--open');
+  panel.classList.toggle('howto-panel--open', open);
+  btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  content?.setAttribute('aria-hidden', open ? 'false' : 'true');
+});
 
 await initDataStore({
   onUpdate: () => renderDashboard(),

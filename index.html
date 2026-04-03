@@ -35,9 +35,9 @@
       <p id="sync-status" class="sync-status" role="status"></p>
     </header>
 
-    <details class="panel howto-panel howto-panel--compact">
-      <summary class="howto-summary" data-i18n="howtoTitle">How to use</summary>
-      <div class="howto-expand">
+    <div class="panel howto-panel howto-panel--compact">
+      <button type="button" class="howto-summary" id="howto-toggle" aria-expanded="false" aria-controls="howto-content" data-i18n="howtoTitle">How to use</button>
+      <div id="howto-content" class="howto-expand" role="region" aria-labelledby="howto-toggle" aria-hidden="true">
         <div class="howto-inner">
           <ul class="howto-list howto-list--compact">
             <li data-i18n-html="howtoLi1"></li>
@@ -49,7 +49,7 @@
           </ul>
         </div>
       </div>
-    </details>
+    </div>
 
     <main class="main">
       <!-- Dashboard -->
@@ -74,6 +74,27 @@
         <div class="panel form-panel">
           <h2 class="panel-title panel-title--single-line panel-title--add-card" data-i18n="addCardTitle">Add card</h2>
           <form id="form-add-card" class="card-form">
+            <div class="lang-pair-row" role="group" aria-label="Translation language pair">
+              <label class="lang-pair-field">
+                <span class="lang-pair-label" data-i18n="fieldSourceLang">Source language</span>
+                <select id="select-lang-source" class="select-lang" aria-label="Source language for word">
+                  <option value="pt">Portuguese</option>
+                  <option value="en">English</option>
+                  <option value="ru">Russian</option>
+                  <option value="uk">Ukrainian</option>
+                </select>
+              </label>
+              <span class="lang-pair-sep" aria-hidden="true">→</span>
+              <label class="lang-pair-field">
+                <span class="lang-pair-label" data-i18n="fieldTargetLang">Target language</span>
+                <select id="select-lang-target" class="select-lang" aria-label="Target language for translation">
+                  <option value="en">English</option>
+                  <option value="ru">Russian</option>
+                  <option value="uk">Ukrainian</option>
+                  <option value="pt">Portuguese</option>
+                </select>
+              </label>
+            </div>
             <label class="field">
               <span class="field-label field-label--single-line" data-i18n="fieldWord">Word</span>
               <div class="field-word-wrap" id="field-word-wrap">

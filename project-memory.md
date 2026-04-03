@@ -1,11 +1,13 @@
 # LingoLift — project memory (for AI context)
 
-**Document version:** 11  
-**App / Service Worker cache:** `lingolift-v11` (`sw.js` → `CACHE = 'lingolift-v11'`)
+**Document version:** 12  
+**App / Service Worker cache:** `lingolift-v12` (`sw.js` → `CACHE = 'lingolift-v12'`)
 
-**Major pivot (v11): English-only UI.** Multi-language support (RU, UA, PT) and the header language switcher were removed for a cleaner, unified international experience. The app is **English-only**; `<html lang="en">` is fixed. **Core focus remains learning Portuguese vocabulary** (words in PT, translations typically in English). Legacy `localStorage` key `lingolift-lang` is cleared on load.
+**v12:** Added bi-directional smooth animation for "How to use". Introduced language pair selection for card inputs with dynamic Google Translate integration.
 
-**UI simplified (v9.1 → still applies):** Cloud sync success shows **only ✅** on the footer button for ~1.5s — **no success toast**, no card-count copy (short `footerSyncCompleteAria` for screen readers only).
+**Major pivot (v11, still applies): English-only UI.** Multi-language support (RU, UA, PT) and the header language switcher were removed for a cleaner, unified international experience. The app is **English-only**; `<html lang="en">` is fixed. **Core focus remains learning Portuguese vocabulary** (words often in PT, translations often in English). Legacy `localStorage` key `lingolift-lang` is cleared on load.
+
+**v12 UI:** The Add card form includes **Source language** and **Target language** selects (Google codes `pt`, `en`, `ru`, `uk`). Defaults: source **PT**, target **EN**. Option labels use English language names (Portuguese, English, Russian, Ukrainian). The magic wand (🪄) calls Google GTX with **`sl`** and **`tl`** from those selects.
 
 ---
 
@@ -33,7 +35,7 @@
 
 ## Magic wand (Google GTX)
 
-- **API:** `translate_a/single`, `client=gtx`, **`sl=pt`**, **`tl=en`** (Portuguese → English; matches English-only UI).
+- **API:** `translate_a/single`, `client=gtx`, **`sl`** = Add card “Source language” (`#select-lang-source`), **`tl`** = “Target language” (`#select-lang-target`). Ukrainian uses code **`uk`** (UI label “Ukrainian”).
 - **Parsing:** `parseGtxTranslation` joins segment strings from `data[0][*][0]`.
 - **UX:** Empty word → shake word wrap. Loading → `.is-busy` on wand. Success → violet border flash on translation field. Same-string fallback → `toastTranslationNotFound`.
 
@@ -57,7 +59,7 @@
 
 ## How-to panel
 
-- `<details class="howto-panel">` with `.howto-expand` grid animation (`css/styles.css`).
+- **Not** native `<details>` (v12): a **button** `#howto-toggle` toggles `.howto-panel--open` on `.howto-panel`. Content `#howto-content` uses **`max-height`** + **opacity** on `.howto-expand` and fade/slide on `.howto-inner` for open **and** close. `aria-expanded` / `aria-hidden` updated in `app.js`.
 
 ---
 
