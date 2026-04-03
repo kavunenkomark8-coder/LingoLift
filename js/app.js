@@ -10,7 +10,7 @@ import {
   HARD_MS,
   EASY_MS,
 } from './data-store.js';
-import { applyLanguage, getLang, getCurrentLang, t } from './i18n.js';
+import { applyLanguage, getLang, getCurrentLang, t, LANG_CYCLE } from './i18n.js';
 
 const DAY_STATS_KEY = 'lingolift-day-stats';
 
@@ -313,16 +313,17 @@ function registerSW() {
 
 applyLanguage(getLang());
 
-document.querySelectorAll('.lang-switch [data-lang]').forEach((btn) => {
-  btn.addEventListener('click', () => {
-    const lang = btn.getAttribute('data-lang');
-    if (!lang) return;
-    applyLanguage(lang);
+const btnLangCycle = document.getElementById('btn-lang-cycle');
+if (btnLangCycle) {
+  btnLangCycle.addEventListener('click', () => {
+    const i = LANG_CYCLE.indexOf(getCurrentLang());
+    const next = LANG_CYCLE[(i + 1) % LANG_CYCLE.length];
+    applyLanguage(next);
     renderDashboard();
     updateSyncLabel();
     if (!els.viewStudy.hidden) updateSessionProgress();
   });
-});
+}
 
 await initDataStore({
   onUpdate: () => renderDashboard(),

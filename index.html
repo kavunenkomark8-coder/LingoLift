@@ -27,38 +27,51 @@
 <body>
   <div id="app" class="app">
     <header class="top-bar">
-      <div class="lang-switch" role="group">
-        <button type="button" class="lang-btn" data-lang="ru" aria-pressed="false">RU</button>
-        <span class="lang-sep" aria-hidden="true">|</span>
-        <button type="button" class="lang-btn" data-lang="ua" aria-pressed="false">UA</button>
-        <span class="lang-sep" aria-hidden="true">|</span>
-        <button type="button" class="lang-btn" data-lang="en" aria-pressed="false">EN</button>
-        <span class="lang-sep" aria-hidden="true">|</span>
-        <button type="button" class="lang-btn" data-lang="pt" aria-pressed="false">PT</button>
-      </div>
       <div class="brand">
-        <span class="brand-mark" aria-hidden="true"></span>
+        <button type="button" id="btn-lang-cycle" class="brand-flag" data-active-lang="en" aria-label="Change language">
+          <svg class="flag-svg flag-svg--ru" viewBox="0 0 3 2" aria-hidden="true" focusable="false">
+            <rect width="3" height="0.667" fill="#fff" />
+            <rect y="0.667" width="3" height="0.667" fill="#0039a6" />
+            <rect y="1.333" width="3" height="0.667" fill="#d52b1e" />
+          </svg>
+          <svg class="flag-svg flag-svg--ua" viewBox="0 0 3 2" aria-hidden="true" focusable="false">
+            <rect width="3" height="1" fill="#0057b7" />
+            <rect y="1" width="3" height="1" fill="#ffd700" />
+          </svg>
+          <svg class="flag-svg flag-svg--en" viewBox="0 0 3 2" aria-hidden="true" focusable="false">
+            <rect width="3" height="2" fill="#fff" />
+            <path stroke="#cf142b" stroke-width="0.4" d="M1.5 0v2M0 1h3" />
+          </svg>
+          <svg class="flag-svg flag-svg--pt" viewBox="0 0 3 2" aria-hidden="true" focusable="false">
+            <rect width="1.2" height="2" fill="#006600" />
+            <rect x="1.2" width="1.8" height="2" fill="#d52b1e" />
+          </svg>
+        </button>
         <h1 class="brand-name">LingoLift</h1>
       </div>
       <p class="tagline" data-i18n="tagline">Vocabulary · Spaced repetition</p>
       <p id="sync-status" class="sync-status" role="status"></p>
     </header>
 
-    <details class="panel howto-panel">
+    <details class="panel howto-panel howto-panel--compact">
       <summary class="howto-summary" data-i18n="howtoTitle">How to use</summary>
-      <ul class="howto-list">
-        <li data-i18n-html="howtoLi1"></li>
-        <li data-i18n-html="howtoLi2"></li>
-        <li data-i18n-html="howtoLi3"></li>
-        <li data-i18n-html="howtoLi4"></li>
-      </ul>
+      <div class="howto-inner">
+        <ul class="howto-list howto-list--compact">
+          <li data-i18n-html="howtoLi1"></li>
+          <li data-i18n-html="howtoLi2"></li>
+          <li data-i18n-html="howtoLi3"></li>
+          <li data-i18n-html="howtoLi4"></li>
+        </ul>
+        <p class="howto-sync-note" data-i18n-html="syncHelpBody1"></p>
+        <p class="howto-sync-note" data-i18n-html="syncHelpBody2"></p>
+      </div>
     </details>
 
     <main class="main">
       <!-- Dashboard -->
       <section id="view-dashboard" class="view view--active" aria-label="Dashboard">
         <div class="panel progress-panel">
-          <div class="progress-head">
+          <div class="progress-head progress-head--single-line">
             <span class="progress-label" data-i18n="dueToday">Due today</span>
             <span id="progress-count" class="progress-count">0 / 0</span>
           </div>
@@ -68,38 +81,29 @@
         </div>
 
         <div class="panel actions-panel">
-          <button type="button" class="btn btn--primary btn--large" id="btn-start-review" data-i18n="startReview">
+          <button type="button" class="btn btn--primary btn--large btn-text-nowrap" id="btn-start-review" data-i18n="startReview">
             Start review
-          </button>
-          <button type="button" class="btn btn--outline btn--block" id="btn-force-sync" data-i18n="forceSync">
-            Force sync from cloud
           </button>
           <p id="review-hint" class="hint hint--muted"></p>
         </div>
 
-        <details class="panel sync-help-panel">
-          <summary class="sync-help-summary" data-i18n="syncHelpTitle">How sync works</summary>
-          <p class="sync-help-body" data-i18n-html="syncHelpBody1"></p>
-          <p class="sync-help-body" data-i18n-html="syncHelpBody2"></p>
-        </details>
-
         <div class="panel form-panel">
-          <h2 class="panel-title" data-i18n="addCardTitle">Add card</h2>
+          <h2 class="panel-title panel-title--single-line" data-i18n="addCardTitle">Add card</h2>
           <form id="form-add-card" class="card-form">
             <label class="field">
-              <span class="field-label" data-i18n="fieldWord">Word</span>
+              <span class="field-label field-label--single-line" data-i18n="fieldWord">Word</span>
               <input type="text" id="input-word" name="word" autocomplete="off" data-i18n-placeholder="placeholderWord" placeholder="e.g. casa" required />
             </label>
             <label class="field">
-              <span class="field-label" data-i18n="fieldTranslation">Translation</span>
+              <span class="field-label field-label--single-line" data-i18n="fieldTranslation">Translation</span>
               <input type="text" id="input-translation" name="translation" autocomplete="off" data-i18n-placeholder="placeholderTranslation" placeholder="e.g. house" required />
             </label>
-            <button type="submit" class="btn btn--secondary btn--block" data-i18n="addCardSubmit">Add card</button>
+            <button type="submit" class="btn btn--secondary btn--block btn-text-nowrap" data-i18n="addCardSubmit">Add card</button>
           </form>
         </div>
 
         <div class="panel stats-panel">
-          <p class="stats-line"><span id="stat-total">0</span> <span data-i18n="statsDeckSuffix">cards in deck</span></p>
+          <p class="stats-line stats-line--single-line"><span id="stat-total">0</span> <span data-i18n="statsDeckSuffix">cards in deck</span></p>
           <p id="account-hint" class="stats-line stats-line--sub" hidden></p>
         </div>
       </section>
@@ -107,9 +111,9 @@
       <!-- Study -->
       <section id="view-study" class="view" aria-label="Study" hidden>
         <div class="study-top">
-          <button type="button" class="btn btn--ghost" id="btn-exit-study" data-i18n="studyExit">← Exit</button>
+          <button type="button" class="btn btn--ghost btn-text-nowrap" id="btn-exit-study" data-i18n="studyExit">← Exit</button>
           <div class="study-progress-meta">
-            <span id="study-remaining-label" class="study-remaining"></span>
+            <span id="study-remaining-label" class="study-remaining study-remaining--single-line"></span>
             <div class="session-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="session-bar-wrap">
               <div id="session-bar-fill" class="session-fill"></div>
             </div>
@@ -127,18 +131,22 @@
         </div>
 
         <div class="study-actions">
-          <button type="button" class="btn btn--primary btn--large" id="btn-show-answer" data-i18n="showAnswer">Show answer</button>
+          <button type="button" class="btn btn--primary btn--large btn-text-nowrap" id="btn-show-answer" data-i18n="showAnswer">Show answer</button>
           <div id="grade-row" class="grade-row" hidden>
-            <button type="button" class="btn btn--hard" id="btn-hard">
+            <button type="button" class="btn btn--hard btn-text-nowrap" id="btn-hard">
               <span data-i18n="gradeHard">Hard</span> <span class="btn-sub" data-i18n="gradeHardSub">soon</span>
             </button>
-            <button type="button" class="btn btn--easy" id="btn-easy">
+            <button type="button" class="btn btn--easy btn-text-nowrap" id="btn-easy">
               <span data-i18n="gradeEasy">Easy</span> <span class="btn-sub" data-i18n="gradeEasySub">later</span>
             </button>
           </div>
         </div>
       </section>
     </main>
+
+    <footer class="app-footer">
+      <button type="button" class="btn-footer-sync" id="btn-force-sync" data-i18n="forceSync">Cloud sync</button>
+    </footer>
 
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
   </div>
