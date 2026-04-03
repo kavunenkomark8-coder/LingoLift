@@ -1,7 +1,9 @@
 # LingoLift — project memory (for AI context)
 
-**Document version:** 15.2  
-**App / Service Worker cache:** `lingolift-v15.2` (`sw.js` → `CACHE = 'lingolift-v15.2'`)
+**Document version:** 16  
+**App / Service Worker cache:** `lingolift-v16` (`sw.js` → `CACHE = 'lingolift-v16'`)
+
+**v16:** Integrated **Tesseract.js** for OCR. Added **camera-to-word** workflow for rapid card creation: **`📷`** next to Word opens **`#input-photo-ocr`** (`capture="environment"`); **`Tesseract.createWorker('por')`** + **`recognize`**, first-line text into **`#input-word`**, then **`runAutoTranslate()`** (magic wand). Overlay **`#field-word-ocr-overlay`** + **`ocrScanning`** while scanning; worker **`terminate()`** and file input cleared after use. Script: **`https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js`** (before **`app.js`**). **`sw.js`** precaches **`tesseract.min.js`** + **`worker.min.js`** and uses **cache-first** for **`cdn.jsdelivr.net`** (offline after first load; language data may still fetch on first OCR).
 
 **v15.2:** **App avatar** is the user-provided **L** icon screenshot (`icons/icon-source.png`). **`export-icon-sizes.ps1`** crops to a **center square** then exports **192** / **512** and root **`android-chrome-*.png`**. **`theme_color`** **`#5312B1`** (deep purple from gradient).
 
@@ -24,7 +26,7 @@
 - **`js/app.js`:** `dueTodayQueue` uses one **`endOfToday()`** read and a single pass + sort (no per-card `filter` callback); removed **`loadCards`** wrapper; **`parseGtxTranslation`** builds an array then **`join`**; cached DOM refs for how-to controls and add-card submit; **`void`** on fire-and-forget refresh.
 - **`js/data-store.js`:** **`runRefreshPipeline`** uses **`const { client, userId } = await ensureSession()`** and passes **`client`** into **`flushOutbox`**, **`fetchRemoteCards`**, **`migrateLegacyIfNeeded`** to avoid redundant **`ensureClient()`**; **`migrateLegacyIfNeeded(userId, remote, client)`** reuses the first remote fetch and returns **`true`** only when legacy rows were inserted, then refetches once; **`addCard`** / **`updateCardNextReview`** use **`client`** from **`ensureSession()`** only.
 - **`css/styles.css`:** Sync strip uses **`contain: layout`**, **`translateZ(0)`**, and opacity timing aligned with **`--sync-ease`** to reduce flicker; **`.flash-back-wrap`** uses **`translate3d`**, **`contain: content`**, **`backface-visibility: hidden`** for smoother compositing on mobile.
-- **`sw.js`:** Install uses **`Promise.allSettled`** per asset so one failed URL does not block the rest; cache name bumped with versions (e.g. **`lingolift-v15.2`**).
+- **`sw.js`:** Install uses **`Promise.allSettled`** per asset so one failed URL does not block the rest; cache name bumped with versions (e.g. **`lingolift-v16`**); **`cdn.jsdelivr.net`** cache-first for Tesseract.
 - **`js/i18n.js`:** Removed unused string keys (**`toastSynced`**, **`toastEnterWord`**).
 
 ---
@@ -34,7 +36,7 @@
 - **Frontend:** Vanilla JS (ES modules), no framework. Entry: `index.html` → `js/app.js`.
 - **UI strings:** `js/i18n.js` — single **`strings`** object (English); **`t(key, vars)`** and **`applyUiStrings()`** populate `[data-i18n]`, `[data-i18n-html]`, placeholders, titles. No `localStorage` language preference.
 - **Data & cloud:** `js/data-store.js` — Supabase JS client (`@supabase/supabase-js` via importmap), anonymous auth session, table **`cards`**. **Supabase Storage is not used** in this repo.
-- **Offline / PWA:** `sw.js` precaches shell assets; GET to `*.supabase.co` is network-first. Local cache: `localStorage` keys `lingolift-cards-cache`, `lingolift-sync-outbox`, legacy `lingolift-cards`.
+- **Offline / PWA:** `sw.js` precaches shell assets + Tesseract CDN bundles; GET to `*.supabase.co` is network-first; **`cdn.jsdelivr.net`** and **`esm.sh`** are cache-first for offline libs. Local cache: `localStorage` keys `lingolift-cards-cache`, `lingolift-sync-outbox`, legacy `lingolift-cards`.
 
 ---
 
@@ -52,11 +54,12 @@
 
 ---
 
-## Magic wand (Google GTX)
+## Magic wand (Google GTX) & camera OCR
 
 - **API:** `translate_a/single`, `client=gtx`, **`sl`** = Add card “Source language” (`#select-lang-source`), **`tl`** = “Target language” (`#select-lang-target`). Ukrainian uses code **`uk`** (UI label “Ukrainian”).
 - **Parsing:** `parseGtxTranslation` joins segment strings from `data[0][*][0]`.
 - **UX:** Empty word → shake word wrap. Loading → `.is-busy` on wand. Success → violet border flash on translation field. Same-string fallback → `toastTranslationNotFound`.
+- **OCR (v16):** **`btn-ocr-camera`** → **`input-photo-ocr`**; Tesseract **`por`**; **`normalizeOcrText`** (first line, collapse spaces); then same GTX flow as wand.
 
 ---
 
