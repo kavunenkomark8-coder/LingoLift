@@ -103,25 +103,16 @@
             </div>
             <label class="field">
               <span class="field-label field-label--single-line" data-i18n="fieldWord">Word</span>
-              <div class="field-word-wrap field-word-wrap--ocr" id="field-word-wrap">
+              <div class="field-word-wrap" id="field-word-wrap">
                 <input
                   type="text"
                   id="input-word"
                   name="word"
-                  class="field-input--with-camera"
                   autocomplete="off"
                   data-i18n-placeholder="placeholderWord"
                   placeholder="e.g. casa"
                   required
                 />
-                <button type="button" class="btn-ocr-camera" id="btn-ocr-camera" data-i18n-title="btnOcrCameraTitle" title="Scan word from photo" aria-label="Scan word from photo">
-                  📷
-                </button>
-                <input type="file" id="input-photo-ocr" class="visually-hidden" accept="image/*" capture="environment" tabindex="-1" aria-hidden="true" />
-                <div id="field-word-ocr-overlay" class="field-word-ocr-overlay" hidden role="status" aria-live="polite">
-                  <span class="field-word-ocr-spinner" aria-hidden="true"></span>
-                  <span data-i18n="ocrScanning">Scanning…</span>
-                </div>
               </div>
             </label>
             <label class="field">
@@ -185,7 +176,6 @@
 
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
   </div>
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js" crossorigin="anonymous"></script>
   <script src="js/app.js" type="module"></script>
 </body>
 </html>

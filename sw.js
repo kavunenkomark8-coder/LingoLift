@@ -1,9 +1,4 @@
-const CACHE = 'lingolift-v16.2';
-
-const TESSERACT_CDN = [
-  'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js',
-  'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/worker.min.js',
-];
+const CACHE = 'lingolift-v18';
 
 const ASSETS = [
   './',
@@ -16,7 +11,6 @@ const ASSETS = [
   './manifest.json',
   './android-chrome-192x192.png',
   './android-chrome-512x512.png',
-  ...TESSERACT_CDN,
 ];
 
 self.addEventListener('install', (e) => {
@@ -66,17 +60,6 @@ function respondCacheFirstCdn(e) {
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
   const url = new URL(e.request.url);
-
-  // Debug v16.2: do not cache-first Tesseract-related requests until OCR is stable online.
-  if (e.request.url.includes('tesseract')) {
-    e.respondWith(fetch(e.request));
-    return;
-  }
-  // Language data host (explicit worker `langPath`) — bypass SW interception.
-  if (url.hostname === 'tessdata.projectnaptha.com') {
-    e.respondWith(fetch(e.request));
-    return;
-  }
 
   if (url.hostname.endsWith('supabase.co')) {
     e.respondWith(fetch(e.request));

@@ -72,9 +72,6 @@ const els = {
   inputWord: document.getElementById('input-word'),
   inputTranslation: document.getElementById('input-translation'),
   fieldWordWrap: document.getElementById('field-word-wrap'),
-  btnOcrCamera: document.getElementById('btn-ocr-camera'),
-  inputPhotoOcr: document.getElementById('input-photo-ocr'),
-  fieldWordOcrOverlay: document.getElementById('field-word-ocr-overlay'),
   btnTranslateWand: document.getElementById('btn-translate-wand'),
   statTotal: document.getElementById('stat-total'),
   btnExitStudy: document.getElementById('btn-exit-study'),
@@ -187,129 +184,6 @@ async function runAutoTranslate() {
   } finally {
     btn.disabled = false;
     btn.classList.remove('is-busy');
-  }
-}
-
-/** @param {string} raw */
-function normalizeOcrText(raw) {
-  if (!raw || typeof raw !== 'string') return '';
-  const lines = raw
-    .split(/\r?\n/)
-    .map((l) => l.trim())
-    .filter(Boolean);
-  const first = lines[0] || '';
-  return first.replace(/\s+/g, ' ').trim();
-}
-
-function setWordOcrScanning(busy) {
-  if (!els.fieldWordWrap) return;
-  els.fieldWordWrap.classList.toggle('field-word-wrap--scanning', busy);
-  els.fieldWordWrap.setAttribute('aria-busy', busy ? 'true' : 'false');
-  if (els.fieldWordOcrOverlay) els.fieldWordOcrOverlay.hidden = !busy;
-  if (els.btnOcrCamera) els.btnOcrCamera.disabled = busy;
-}
-
-const OCR_RECOGNIZE_TIMEOUT_MS = 10000;
-
-const TESSERACT_WORKER_OPTIONS = {
-  workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/worker.min.js',
-  langPath: 'https://tessdata.projectnaptha.com/4.0.0',
-  corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5/tesseract-core.wasm.js',
-};
-
-/**
- * Ensures Portuguese is loaded (redundant with some `createWorker('por', …)` builds; safe if methods no-op).
- * @param {any} worker
- */
-async function initOcrWorkerPor(worker) {
-  console.log('[LingoLift OCR] Loading language');
-  if (typeof worker.loadLanguage === 'function') {
-    try {
-      await worker.loadLanguage('por');
-    } catch (e) {
-      console.warn('[LingoLift OCR] loadLanguage:', e);
-    }
-  }
-  if (typeof worker.initialize === 'function') {
-    try {
-      await worker.initialize('por');
-    } catch (e) {
-      console.warn('[LingoLift OCR] initialize:', e);
-    }
-  }
-}
-
-/** @param {File} file */
-async function runCameraOcr(file) {
-  const T = globalThis.Tesseract;
-  if (!T || typeof T.createWorker !== 'function') {
-    showToast(t('ocrFailed'));
-    try {
-      window.alert('Tesseract not available');
-    } catch (_) {}
-    if (els.inputPhotoOcr) els.inputPhotoOcr.value = '';
-    return;
-  }
-
-  let worker = null;
-  setWordOcrScanning(true);
-
-  try {
-    worker = await T.createWorker('por', 1, TESSERACT_WORKER_OPTIONS);
-    console.log('[LingoLift OCR] Worker created');
-    await initOcrWorkerPor(worker);
-
-    console.log('[LingoLift OCR] Recognizing...');
-    const recognizeTimeout = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('OCR Timeout')), OCR_RECOGNIZE_TIMEOUT_MS);
-    });
-    const result = await Promise.race([worker.recognize(file), recognizeTimeout]);
-    const {
-      data: { text },
-    } = result;
-
-    const normalized = normalizeOcrText(text);
-    if (!normalized) {
-      const emptyMsg = 'No text detected';
-      console.warn('[LingoLift OCR]', emptyMsg);
-      try {
-        window.alert(emptyMsg);
-      } catch (_) {}
-      showToast(t('ocrFailed'));
-      return;
-    }
-    els.inputWord.value = normalized;
-    await runAutoTranslate();
-  } catch (err) {
-    console.error('[LingoLift OCR]', err);
-    const raw = err != null ? String(err.message != null ? err.message : err) : '';
-    try {
-      window.alert(raw || 'OCR error');
-    } catch (_) {}
-    const isTimeout = raw === 'OCR Timeout';
-    const isFetchFail =
-      /failed to fetch/i.test(raw) ||
-      (err != null && err.name === 'TypeError' && /fetch/i.test(raw));
-    if (isTimeout) {
-      showToast(t('ocrTimeout'));
-    } else if (isFetchFail) {
-      showToast(t('ocrFailedNetwork'));
-    } else {
-      showToast(t('ocrFailed'));
-    }
-  } finally {
-    try {
-      setWordOcrScanning(false);
-    } catch (_) {}
-    if (worker) {
-      try {
-        await worker.terminate();
-      } catch (_) {}
-      worker = null;
-    }
-    try {
-      if (els.inputPhotoOcr) els.inputPhotoOcr.value = '';
-    } catch (_) {}
   }
 }
 
@@ -498,16 +372,6 @@ if (els.btnTranslateWand) {
     void runAutoTranslate();
   });
 }
-
-els.btnOcrCamera?.addEventListener('click', () => {
-  els.inputPhotoOcr?.click();
-});
-
-els.inputPhotoOcr?.addEventListener('change', () => {
-  const f = els.inputPhotoOcr?.files?.[0];
-  if (!f) return;
-  void runCameraOcr(f);
-});
 
 els.btnStartReview.addEventListener('click', startReview);
 
