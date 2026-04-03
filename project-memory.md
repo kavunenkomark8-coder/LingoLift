@@ -1,9 +1,11 @@
 # LingoLift — project memory (for AI context)
 
-**Document version:** 16.1  
-**App / Service Worker cache:** `lingolift-v16.1` (`sw.js` → `CACHE = 'lingolift-v16.1'`)
+**Document version:** 16.2  
+**App / Service Worker cache:** `lingolift-v16.2` (`sw.js` → `CACHE = 'lingolift-v16.2'`)
 
-**v16.1:** **Camera OCR** hardened: **15s timeout** (`Promise.race`), **`try`/`catch`** with **`console.error('[LingoLift OCR]', err)`**, **`finally`** always clears **`setWordOcrScanning(false)`**, terminates worker, resets **`#input-photo-ocr`** (`value = ''`). Toasts: **`ocrTimeout`**, **`ocrFailedNetwork`** when fetch fails (first-time **`por`** traineddata download), else **`ocrFailed`**. **`initOcrWorkerPor`** calls **`loadLanguage`/`initialize`** when present (wrapped in **`try`/`catch`**). **`sw.js`** cache bumped for clients to pick up **`app.js`** changes.
+**v16.2:** **OCR debug / repair:** **`createWorker('por', 1, TESSERACT_WORKER_OPTIONS)`** with explicit **`workerPath`**, **`langPath`** (`tessdata.projectnaptha.com/4.0.0`), **`corePath`**. **`recognize`** wrapped in **`Promise.race`** with **10s** → **`Error('OCR Timeout')`**. **`finally`** always **`setWordOcrScanning(false)`**, **`worker.terminate()`** (errors swallowed), clears **`#input-photo-ocr`**. Console logs: Worker created, Loading language, Recognizing…. On failure **`window.alert`** shows the error string (phone debugging). **`sw.js`**: URLs containing **`tesseract`** and **`tessdata.projectnaptha.com`** use **direct `fetch`** (no cache-first) while OCR is validated online.
+
+**v16.1:** **Camera OCR** hardened: timeout + **`try`/`catch`/`finally`**, toasts **`ocrTimeout`** / **`ocrFailedNetwork`** / **`ocrFailed`**, **`initOcrWorkerPor`**. Superseded by v16.2 for timeout duration and worker config.
 
 **v16:** Integrated **Tesseract.js** for OCR. Added **camera-to-word** workflow for rapid card creation: **`📷`** next to Word opens **`#input-photo-ocr`** (`capture="environment"`); **`Tesseract.createWorker('por')`** + **`recognize`**, first-line text into **`#input-word`**, then **`runAutoTranslate()`** (magic wand). Overlay **`#field-word-ocr-overlay`** + **`ocrScanning`** while scanning; worker **`terminate()`** and file input cleared after use. Script: **`https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js`** (before **`app.js`**). **`sw.js`** precaches **`tesseract.min.js`** + **`worker.min.js`** and uses **cache-first** for **`cdn.jsdelivr.net`** (offline after first load; language data may still fetch on first OCR).
 

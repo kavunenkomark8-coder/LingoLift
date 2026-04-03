@@ -209,13 +209,20 @@ function setWordOcrScanning(busy) {
   if (els.btnOcrCamera) els.btnOcrCamera.disabled = busy;
 }
 
-const OCR_TIMEOUT_MS = 15000;
+const OCR_RECOGNIZE_TIMEOUT_MS = 10000;
+
+const TESSERACT_WORKER_OPTIONS = {
+  workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/worker.min.js',
+  langPath: 'https://tessdata.projectnaptha.com/4.0.0',
+  corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5/tesseract-core.wasm.js',
+};
 
 /**
- * Ensures Portuguese is loaded (redundant with some `createWorker('por')` builds; safe if methods no-op).
+ * Ensures Portuguese is loaded (redundant with some `createWorker('por', …)` builds; safe if methods no-op).
  * @param {any} worker
  */
 async function initOcrWorkerPor(worker) {
+  console.log('[LingoLift OCR] Loading language');
   if (typeof worker.loadLanguage === 'function') {
     try {
       await worker.loadLanguage('por');
@@ -237,60 +244,37 @@ async function runCameraOcr(file) {
   const T = globalThis.Tesseract;
   if (!T || typeof T.createWorker !== 'function') {
     showToast(t('ocrFailed'));
+    try {
+      window.alert('Tesseract not available');
+    } catch (_) {}
     if (els.inputPhotoOcr) els.inputPhotoOcr.value = '';
     return;
   }
 
-  setWordOcrScanning(true);
   let worker = null;
-  let timedOut = false;
-
-  const timeoutPromise = new Promise((_, reject) => {
-    setTimeout(() => {
-      timedOut = true;
-      reject(new Error('ocr-timeout'));
-    }, OCR_TIMEOUT_MS);
-  });
+  setWordOcrScanning(true);
 
   try {
-    const ocrPipeline = async () => {
-      worker = await T.createWorker('por');
-      if (timedOut) {
-        try {
-          await worker.terminate();
-        } catch (e) {
-          console.error('[LingoLift OCR] terminate after timeout (post-create):', e);
-        }
-        worker = null;
-        throw new Error('ocr-timeout');
-      }
-      await initOcrWorkerPor(worker);
-      if (timedOut) {
-        try {
-          await worker.terminate();
-        } catch (e) {
-          console.error('[LingoLift OCR] terminate after timeout (post-init):', e);
-        }
-        worker = null;
-        throw new Error('ocr-timeout');
-      }
-      return worker.recognize(file);
-    };
+    worker = await T.createWorker('por', 1, TESSERACT_WORKER_OPTIONS);
+    console.log('[LingoLift OCR] Worker created');
+    await initOcrWorkerPor(worker);
 
-    const result = await Promise.race([ocrPipeline(), timeoutPromise]);
+    console.log('[LingoLift OCR] Recognizing...');
+    const recognizeTimeout = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('OCR Timeout')), OCR_RECOGNIZE_TIMEOUT_MS);
+    });
+    const result = await Promise.race([worker.recognize(file), recognizeTimeout]);
     const {
       data: { text },
     } = result;
 
-    try {
-      await worker.terminate();
-    } catch (termErr) {
-      console.error('[LingoLift OCR] worker terminate after success:', termErr);
-    }
-    worker = null;
-
     const normalized = normalizeOcrText(text);
     if (!normalized) {
+      const emptyMsg = 'No text detected';
+      console.warn('[LingoLift OCR]', emptyMsg);
+      try {
+        window.alert(emptyMsg);
+      } catch (_) {}
       showToast(t('ocrFailed'));
       return;
     }
@@ -299,7 +283,10 @@ async function runCameraOcr(file) {
   } catch (err) {
     console.error('[LingoLift OCR]', err);
     const raw = err != null ? String(err.message != null ? err.message : err) : '';
-    const isTimeout = raw === 'ocr-timeout';
+    try {
+      window.alert(raw || 'OCR error');
+    } catch (_) {}
+    const isTimeout = raw === 'OCR Timeout';
     const isFetchFail =
       /failed to fetch/i.test(raw) ||
       (err != null && err.name === 'TypeError' && /fetch/i.test(raw));
@@ -311,15 +298,18 @@ async function runCameraOcr(file) {
       showToast(t('ocrFailed'));
     }
   } finally {
-    setWordOcrScanning(false);
+    try {
+      setWordOcrScanning(false);
+    } catch (_) {}
     if (worker) {
       try {
         await worker.terminate();
-      } catch (termErr) {
-        console.error('[LingoLift OCR] worker terminate in finally:', termErr);
-      }
+      } catch (_) {}
+      worker = null;
     }
-    if (els.inputPhotoOcr) els.inputPhotoOcr.value = '';
+    try {
+      if (els.inputPhotoOcr) els.inputPhotoOcr.value = '';
+    } catch (_) {}
   }
 }
 
