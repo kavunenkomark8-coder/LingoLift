@@ -305,9 +305,17 @@ function showStudyCard() {
   els.btnShowAnswer.hidden = false;
   els.gradeRow.hidden = true;
   updateSessionProgress();
+  requestAnimationFrame(() => {
+    try {
+      els.btnShowAnswer.focus();
+    } catch {
+      /* ignore */
+    }
+  });
 }
 
 function finishStudySession() {
+  detachStudyKeyboard();
   setStudyChromeActive(false);
   els.viewStudy.classList.remove('view--active');
   els.viewStudy.hidden = true;
@@ -315,6 +323,58 @@ function finishStudySession() {
   els.viewDashboard.hidden = false;
   renderDashboard();
   showToast(t('toastSessionComplete'));
+}
+
+function revealStudyAnswer() {
+  if (els.btnShowAnswer.hidden) return;
+  els.studyBackWrap.classList.remove('flash-back-wrap--closed');
+  void els.studyBackWrap.offsetWidth;
+  els.studyBackWrap.classList.add('flash-back-wrap--revealed');
+  els.studyBackWrap.setAttribute('aria-hidden', 'false');
+  els.btnShowAnswer.hidden = true;
+  els.gradeRow.hidden = false;
+}
+
+let studyKeyboardAttached = false;
+
+/** @param {KeyboardEvent} e */
+function onStudyKeydown(e) {
+  if (!els.viewStudy.classList.contains('view--active')) return;
+  const target = /** @type {HTMLElement | null} */ (e.target);
+  if (target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return;
+
+  if (!e.repeat && (e.key === ' ' || e.key === 'Enter')) {
+    if (!els.btnShowAnswer.hidden) {
+      e.preventDefault();
+      revealStudyAnswer();
+    }
+    return;
+  }
+
+  if (els.gradeRow.hidden) return;
+  const ch = e.key.length === 1 ? e.key.toLowerCase() : '';
+  if (e.repeat) return;
+  if (ch === 'h' || e.key === '1') {
+    e.preventDefault();
+    void grade(true);
+    return;
+  }
+  if (ch === 'e' || e.key === '2') {
+    e.preventDefault();
+    void grade(false);
+  }
+}
+
+function attachStudyKeyboard() {
+  if (studyKeyboardAttached) return;
+  studyKeyboardAttached = true;
+  window.addEventListener('keydown', onStudyKeydown);
+}
+
+function detachStudyKeyboard() {
+  if (!studyKeyboardAttached) return;
+  studyKeyboardAttached = false;
+  window.removeEventListener('keydown', onStudyKeydown);
 }
 
 function startReview() {
@@ -332,6 +392,14 @@ function startReview() {
   els.viewStudy.classList.add('view--active');
   els.viewStudy.hidden = false;
   showStudyCard();
+  attachStudyKeyboard();
+  requestAnimationFrame(() => {
+    try {
+      els.btnShowAnswer.focus();
+    } catch {
+      /* ignore */
+    }
+  });
 }
 
 async function grade(hard) {
@@ -425,6 +493,7 @@ els.btnForceSync.addEventListener('click', async () => {
   }
 });
 els.btnExitStudy.addEventListener('click', () => {
+  detachStudyKeyboard();
   queue = [];
   queueIndex = 0;
   setStudyChromeActive(false);
@@ -436,12 +505,7 @@ els.btnExitStudy.addEventListener('click', () => {
 });
 
 els.btnShowAnswer.addEventListener('click', () => {
-  els.studyBackWrap.classList.remove('flash-back-wrap--closed');
-  void els.studyBackWrap.offsetWidth;
-  els.studyBackWrap.classList.add('flash-back-wrap--revealed');
-  els.studyBackWrap.setAttribute('aria-hidden', 'false');
-  els.btnShowAnswer.hidden = true;
-  els.gradeRow.hidden = false;
+  revealStudyAnswer();
 });
 
 els.btnHard.addEventListener('click', () => grade(true));

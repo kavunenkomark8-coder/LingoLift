@@ -11,6 +11,10 @@ export const strings = {
   howtoLi4: 'Use "Cloud sync" at the bottom if the device lacks cards.',
   howtoLi5: 'Works offline — cards sync automatically when you reconnect.',
   howtoLi6: 'Use "Cloud sync" on any new device to restore your full deck.',
+  howtoLi7:
+    'Large screen: <kbd>Space</kbd> or <kbd>Enter</kbd> reveals the answer; <kbd>1</kbd> / <kbd>H</kbd> = Hard, <kbd>2</kbd> / <kbd>E</kbd> = Easy.',
+  studyDesktopKeysHint:
+    'Keyboard: Space or Enter to show answer; 1 or H for Hard; 2 or E for Easy.',
   dueToday: 'Due today',
   progressZeroDue: '0 today',
   progressLeftDue: '{remaining} left · {peak} today',

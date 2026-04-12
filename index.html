@@ -52,6 +52,7 @@
             <li data-i18n-html="howtoLi4"></li>
             <li data-i18n-html="howtoLi5"></li>
             <li data-i18n-html="howtoLi6"></li>
+            <li data-i18n-html="howtoLi7" class="howto-li--desktop"></li>
           </ul>
         </div>
       </div>
@@ -60,6 +61,7 @@
     <main class="main">
       <!-- Dashboard -->
       <section id="view-dashboard" class="view view--active" aria-label="Dashboard">
+        <div class="dashboard-grid">
         <div class="panel progress-panel">
           <div class="progress-head progress-head--single-line">
             <span class="progress-label" data-i18n="dueToday">Due today</span>
@@ -130,10 +132,11 @@
           <p class="stats-line stats-line--single-line"><span id="stat-total">0</span> <span data-i18n="statsDeckSuffix">cards in deck</span></p>
           <p id="account-hint" class="stats-line stats-line--sub" hidden></p>
         </div>
+        </div>
       </section>
 
       <!-- Study -->
-      <section id="view-study" class="view" aria-label="Study" hidden>
+      <section id="view-study" class="view" aria-label="Study" hidden aria-describedby="study-keys-hint">
         <div class="study-top">
           <button type="button" class="btn btn--ghost btn-text-nowrap" id="btn-exit-study" data-i18n="studyExit">← Exit</button>
           <div class="study-progress-meta">
@@ -175,6 +178,7 @@
     </footer>
 
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+    <p id="study-keys-hint" class="visually-hidden" data-i18n="studyDesktopKeysHint"></p>
   </div>
   <script src="js/app.js" type="module"></script>
 </body>
