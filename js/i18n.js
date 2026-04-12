@@ -15,7 +15,6 @@ export const strings = {
   progressZeroDue: '0 today',
   progressLeftDue: '{remaining} left · {peak} today',
   startReview: 'Repeat',
-  randomOrderLabel: 'Random card order',
   forceSync: 'Cloud sync',
   reviewHintEmptyDeck: 'Add your first card.',
   reviewHintNoneToday: 'All done for today!',

@@ -13,7 +13,6 @@ import {
 import { applyUiStrings, t } from './i18n.js';
 
 const DAY_STATS_KEY = 'lingolift-day-stats';
-const SHUFFLE_SESSION_KEY = 'lingolift-shuffle-session';
 
 /** @typedef {{ date: string, peakDue: number }} DayStats */
 
@@ -67,24 +66,6 @@ function shuffleInPlace(arr) {
   return arr;
 }
 
-function readShuffleSessionPref() {
-  try {
-    const v = localStorage.getItem(SHUFFLE_SESSION_KEY);
-    if (v === null) return true;
-    return v === '1';
-  } catch {
-    return true;
-  }
-}
-
-function writeShuffleSessionPref(on) {
-  try {
-    localStorage.setItem(SHUFFLE_SESSION_KEY, on ? '1' : '0');
-  } catch {
-    /* ignore */
-  }
-}
-
 const els = {
   app: document.getElementById('app'),
   syncDynamicRow: document.getElementById('sync-dynamic-row'),
@@ -123,7 +104,6 @@ const els = {
   howtoToggle: document.getElementById('howto-toggle'),
   howtoContent: document.getElementById('howto-content'),
   formAddCardSubmit: document.querySelector('#form-add-card button[type="submit"]'),
-  checkboxRandomOrder: document.getElementById('checkbox-random-order'),
 };
 
 /** @type {ReturnType<typeof setTimeout> | null} */
@@ -344,8 +324,7 @@ function startReview() {
     showToast(t('toastNoCardsDue'));
     return;
   }
-  if (readShuffleSessionPref()) shuffleInPlace(queue);
-  else queue.sort((a, b) => a.nextReview - b.nextReview);
+  shuffleInPlace(queue);
   queueIndex = 0;
   setStudyChromeActive(true);
   els.viewDashboard.classList.remove('view--active');
@@ -489,13 +468,6 @@ function registerSW() {
 }
 
 applyUiStrings();
-
-if (els.checkboxRandomOrder) {
-  els.checkboxRandomOrder.checked = readShuffleSessionPref();
-  els.checkboxRandomOrder.addEventListener('change', () => {
-    writeShuffleSessionPref(els.checkboxRandomOrder.checked);
-  });
-}
 
 els.howtoToggle?.addEventListener('click', () => {
   const panel = els.howtoPanel;

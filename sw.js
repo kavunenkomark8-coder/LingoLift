@@ -1,4 +1,4 @@
-const CACHE = 'lingolift-v19-shuffle';
+const CACHE = 'lingolift-v20-hidden-shuffle';
 
 const ASSETS = [
   './',
