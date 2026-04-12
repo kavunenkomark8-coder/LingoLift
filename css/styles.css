@@ -183,7 +183,7 @@ body {
 
 .brand-name {
   margin: 0;
-  font-size: calc(1.65rem * 1.15);
+  font-size: calc(1.65rem * 1.32);
   font-weight: 700;
   letter-spacing: -0.03em;
   background: linear-gradient(90deg, #fff, var(--violet));
@@ -194,7 +194,7 @@ body {
 
 .tagline {
   margin: 0.3rem 0 0.12rem;
-  font-size: 0.8rem;
+  font-size: 0.93rem;
   color: var(--text-muted);
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -345,7 +345,50 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  margin-bottom: 0.65rem;
+  margin-bottom: 0.45rem;
+}
+
+.due-brain-visual {
+  --brain-fill: 0;
+  width: 100%;
+  max-width: 168px;
+  margin: 0.15rem auto 0.55rem;
+}
+
+.due-brain-visual__svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 100 / 86;
+}
+
+.due-brain-visual__liquid {
+  transform: scaleY(var(--brain-fill));
+  transform-origin: center bottom;
+  transform-box: fill-box;
+  transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .due-brain-visual__liquid {
+    animation: due-brain-liquid-shimmer 3.2s ease-in-out infinite;
+  }
+}
+
+@keyframes due-brain-liquid-shimmer {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.12);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .due-brain-visual__liquid {
+    animation: none;
+  }
 }
 
 .progress-label {
@@ -394,6 +437,37 @@ body {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+
+.panel.form-panel {
+  padding-top: 0.85rem;
+  padding-bottom: 0.9rem;
+}
+
+.form-panel .card-form {
+  gap: 0.58rem;
+}
+
+.form-panel .panel-title--add-card {
+  margin-bottom: 0.55rem;
+}
+
+.form-panel .lang-pair-row {
+  padding-top: 0.05rem;
+  padding-bottom: 0.05rem;
+}
+
+.form-panel .lang-pair-field {
+  gap: 0.2rem;
+}
+
+.form-panel .field {
+  gap: 0.28rem;
+}
+
+.form-panel .field input {
+  padding: 0.58rem 0.75rem;
+  font-size: 0.95rem;
 }
 
 .lang-pair-row {
@@ -617,8 +691,10 @@ body {
 }
 
 .btn-repeat-primary.btn--large {
-  padding-left: 3rem;
-  padding-right: 3rem;
+  padding: 1.15rem 3.25rem;
+  min-height: 3.35rem;
+  font-size: 1.18rem;
+  font-weight: 700;
   min-width: min(100%, 22rem);
   margin-left: auto;
   margin-right: auto;
@@ -1114,7 +1190,12 @@ body {
   }
 
   .lang-pair-row {
-    justify-content: flex-start;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .dashboard-grid .form-panel .lang-pair-field {
+    max-width: 176px;
   }
 
   .flash-card {
