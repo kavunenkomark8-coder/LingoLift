@@ -62,13 +62,14 @@
       <!-- Dashboard -->
       <section id="view-dashboard" class="view view--active" aria-label="Dashboard">
         <div class="dashboard-grid">
-        <div class="panel progress-panel">
-          <div class="progress-head progress-head--single-line">
+        <div class="dashboard-grid__study-col">
+        <div class="panel panel--review">
+          <header class="review-card__head progress-head progress-head--single-line">
             <span class="progress-label" data-i18n="dueToday">Due today</span>
             <span id="progress-count" class="progress-count">0 / 0</span>
-          </div>
+          </header>
           <div id="due-brain-visual" class="due-brain-visual" aria-hidden="true" style="--brain-fill: 0">
-            <svg class="due-brain-visual__svg" viewBox="0 0 100 86" xmlns="http://www.w3.org/2000/svg">
+            <svg class="due-brain-visual__svg" viewBox="0 0 100 98" xmlns="http://www.w3.org/2000/svg">
               <defs>
                 <linearGradient id="dueBrainWaterGrad" x1="0%" y1="100%" x2="0%" y2="0%">
                   <stop offset="0%" stop-color="#5b21b6" />
@@ -77,33 +78,39 @@
                 </linearGradient>
                 <clipPath id="dueBrainShapeClip">
                   <path
-                    d="M50 3.5C31 3.5 16 15 12.5 33c-2.2 11 .2 24 11 32.5 7.5 5.5 18.5 9.5 26.5 10.5 8 1 16 1 24 0 8-1 19-5 26.5-10.5 10.8-8.5 13.2-21.5 11-32.5C84 15 69 3.5 50 3.5z"
+                    d="M 33 9 Q 42 5 49 13 Q 50 16 51 13 Q 58 5 67 9 C 84 14 94 32 96 50 C 98 65 88 82 72 89 C 62 93 52 94 50 94 C 48 94 38 93 28 89 C 12 82 2 65 4 50 C 6 32 16 14 33 9 Z"
                   />
                 </clipPath>
               </defs>
               <g clip-path="url(#dueBrainShapeClip)">
-                <rect width="100" height="86" fill="var(--bg-elevated)" />
-                <rect class="due-brain-visual__liquid" x="0" y="0" width="100" height="86" fill="url(#dueBrainWaterGrad)" />
+                <rect width="100" height="98" fill="var(--bg-elevated)" />
+                <rect class="due-brain-visual__liquid" x="0" y="0" width="100" height="98" fill="url(#dueBrainWaterGrad)" />
+                <path
+                  class="due-brain-visual__sulcus"
+                  fill="none"
+                  stroke="rgba(255, 255, 255, 0.11)"
+                  stroke-width="0.75"
+                  stroke-linecap="round"
+                  d="M 50 17 L 50 52 M 30 22 Q 22 32 26 44 M 70 22 Q 78 32 74 44 M 38 30 Q 50 26 62 30"
+                />
               </g>
               <path
                 class="due-brain-visual__outline"
                 fill="none"
-                stroke="rgba(168, 85, 247, 0.5)"
-                stroke-width="1.25"
-                d="M50 3.5C31 3.5 16 15 12.5 33c-2.2 11 .2 24 11 32.5 7.5 5.5 18.5 9.5 26.5 10.5 8 1 16 1 24 0 8-1 19-5 26.5-10.5 10.8-8.5 13.2-21.5 11-32.5C84 15 69 3.5 50 3.5z"
+                stroke="rgba(168, 85, 247, 0.55)"
+                stroke-width="1.15"
+                stroke-linejoin="round"
+                d="M 33 9 Q 42 5 49 13 Q 50 16 51 13 Q 58 5 67 9 C 84 14 94 32 96 50 C 98 65 88 82 72 89 C 62 93 52 94 50 94 C 48 94 38 93 28 89 C 12 82 2 65 4 50 C 6 32 16 14 33 9 Z"
               />
             </svg>
           </div>
-          <div class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progress-bar-wrap">
-            <div id="progress-fill" class="progress-fill"></div>
+          <div class="review-card__cta">
+            <button type="button" class="btn btn--primary btn--large btn-text-nowrap btn-repeat-primary" id="btn-start-review" data-i18n="startReview">
+              Repeat
+            </button>
+            <p id="review-hint" class="hint hint--muted"></p>
           </div>
         </div>
-
-        <div class="panel actions-panel">
-          <button type="button" class="btn btn--primary btn--large btn-text-nowrap btn-repeat-primary" id="btn-start-review" data-i18n="startReview">
-            Repeat
-          </button>
-          <p id="review-hint" class="hint hint--muted"></p>
         </div>
 
         <div class="panel form-panel">

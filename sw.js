@@ -1,4 +1,4 @@
-const CACHE = 'lingolift-v23-brain-ui';
+const CACHE = 'lingolift-v32-stats-padding';
 
 const ASSETS = [
   './',

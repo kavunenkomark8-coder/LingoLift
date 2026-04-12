@@ -72,8 +72,6 @@ const els = {
   viewDashboard: document.getElementById('view-dashboard'),
   viewStudy: document.getElementById('view-study'),
   progressCount: document.getElementById('progress-count'),
-  progressFill: document.getElementById('progress-fill'),
-  progressBarWrap: document.getElementById('progress-bar-wrap'),
   dueBrainVisual: document.getElementById('due-brain-visual'),
   btnStartReview: document.getElementById('btn-start-review'),
   reviewHint: document.getElementById('review-hint'),
@@ -241,8 +239,6 @@ function renderDashboard() {
   const total = cards.length;
   const stats = getDayStats(remaining);
   const peak = stats.peakDue;
-  const cleared = Math.max(0, peak - remaining);
-  const pct = peak === 0 ? 0 : Math.min(100, Math.round((cleared / peak) * 100));
   const brainFill = peak ? Math.min(1, Math.max(0, remaining / peak)) : 0;
   els.dueBrainVisual?.style.setProperty('--brain-fill', String(brainFill));
 
@@ -252,9 +248,6 @@ function renderDashboard() {
     peak === 0
       ? t('progressZeroDue')
       : t('progressLeftDue', { remaining, peak });
-  els.progressFill.style.width = `${peak === 0 ? 0 : pct}%`;
-  els.progressBarWrap.setAttribute('aria-valuenow', String(peak === 0 ? 0 : pct));
-  els.progressBarWrap.setAttribute('aria-valuemax', '100');
 
   if (remaining === 0) {
     els.reviewHint.textContent =

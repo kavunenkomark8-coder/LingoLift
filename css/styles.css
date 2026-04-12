@@ -119,6 +119,7 @@ body {
 .stats-line--single-line {
   white-space: nowrap;
   font-size: 0.82rem;
+  line-height: 1.25;
 }
 
 .study-remaining--single-line {
@@ -295,6 +296,13 @@ body {
   flex: 1;
 }
 
+.dashboard-grid__study-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -348,18 +356,63 @@ body {
   margin-bottom: 0.45rem;
 }
 
+.panel--review {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.7rem;
+  padding: 1.15rem 1.2rem 1.2rem;
+}
+
+.panel--review .progress-head {
+  margin-bottom: 0;
+}
+
+.review-card__head {
+  width: 100%;
+}
+
 .due-brain-visual {
   --brain-fill: 0;
   width: 100%;
-  max-width: 168px;
-  margin: 0.15rem auto 0.55rem;
+  max-width: 200px;
+  margin: 0 auto;
+}
+
+.panel--review .due-brain-visual {
+  flex-shrink: 0;
+}
+
+.review-card__cta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  margin-top: 0.1rem;
+}
+
+.review-card__cta .btn-repeat-primary.btn--large {
+  width: auto;
+  min-width: min(100%, 17.5rem);
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.review-card__cta .hint {
+  width: 100%;
+  margin: 0.35rem 0 0;
+  min-height: 1.15em;
+  text-align: center;
+  font-size: 0.82rem;
 }
 
 .due-brain-visual__svg {
   display: block;
   width: 100%;
   height: auto;
-  aspect-ratio: 100 / 86;
+  aspect-ratio: 100 / 98;
 }
 
 .due-brain-visual__liquid {
@@ -402,28 +455,6 @@ body {
   color: var(--violet);
 }
 
-.progress-track {
-  height: 8px;
-  border-radius: 999px;
-  background: var(--bg-elevated);
-  overflow: hidden;
-  border: 1px solid var(--border);
-}
-
-.progress-fill {
-  height: 100%;
-  width: 0%;
-  border-radius: 999px;
-  background: linear-gradient(90deg, var(--violet-dim), var(--violet));
-  box-shadow: 0 0 12px var(--violet-glow);
-  transition: width 0.35s ease;
-}
-
-.actions-panel {
-  text-align: center;
-  padding: 1.25rem;
-}
-
 .hint {
   margin: 0.75rem 0 0;
   font-size: 0.85rem;
@@ -439,35 +470,25 @@ body {
   gap: 1rem;
 }
 
-.panel.form-panel {
-  padding-top: 0.85rem;
-  padding-bottom: 0.9rem;
-}
-
 .form-panel .card-form {
-  gap: 0.58rem;
+  gap: 0.88rem;
 }
 
 .form-panel .panel-title--add-card {
-  margin-bottom: 0.55rem;
-}
-
-.form-panel .lang-pair-row {
-  padding-top: 0.05rem;
-  padding-bottom: 0.05rem;
+  margin-bottom: 0.65rem;
 }
 
 .form-panel .lang-pair-field {
-  gap: 0.2rem;
+  gap: 0.26rem;
 }
 
 .form-panel .field {
-  gap: 0.28rem;
+  gap: 0.38rem;
 }
 
 .form-panel .field input {
-  padding: 0.58rem 0.75rem;
-  font-size: 0.95rem;
+  padding: 0.68rem 0.88rem;
+  font-size: 1rem;
 }
 
 .lang-pair-row {
@@ -767,20 +788,30 @@ body {
   box-shadow: 0 0 20px rgba(52, 211, 153, 0.25);
 }
 
-.stats-panel {
-  padding: 0.85rem 1.15rem;
+.panel.stats-panel {
+  padding: 0.38rem 1rem 0.42rem;
+}
+
+.dashboard-grid > .panel.stats-panel {
+  align-self: center;
+  width: fit-content;
+  max-width: min(100%, 22rem);
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .stats-line {
   margin: 0;
   font-size: 0.85rem;
+  line-height: 1.25;
   color: var(--text-muted);
   text-align: center;
 }
 
 .stats-line--sub {
-  margin-top: 0.5rem;
+  margin-top: 0.28rem;
   font-size: 0.72rem;
+  line-height: 1.2;
   font-family: var(--font-mono);
   opacity: 0.9;
 }
@@ -1162,31 +1193,51 @@ body {
 
   .dashboard-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: auto auto auto;
-    gap: 1rem;
-    align-items: start;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    gap: 1.1rem;
+    align-items: stretch;
   }
 
-  .dashboard-grid .progress-panel {
+  .dashboard-grid__study-col {
     grid-column: 1;
     grid-row: 1;
+    display: flex;
+    flex-direction: column;
+    align-self: stretch;
+    min-height: 0;
+    width: 100%;
   }
 
-  .dashboard-grid .actions-panel {
-    grid-column: 1;
-    grid-row: 2;
+  .panel--review {
+    flex: 1;
+    min-height: 0;
+    gap: 0.55rem;
+  }
+
+  .panel--review .due-brain-visual {
+    max-width: 252px;
+  }
+
+  .review-card__cta {
+    margin-top: auto;
+    padding-top: 0.35rem;
   }
 
   .dashboard-grid .form-panel {
     grid-column: 2;
-    grid-row: 1 / span 2;
+    grid-row: 1;
     align-self: stretch;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    width: 100%;
   }
 
   .dashboard-grid .stats-panel {
     grid-column: 1 / -1;
-    grid-row: 3;
+    grid-row: 2;
+    justify-self: center;
   }
 
   .lang-pair-row {
