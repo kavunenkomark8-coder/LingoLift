@@ -23,6 +23,7 @@ export const strings = {
   dueToday: 'Due now',
   progressZeroDue: '0 / 0',
   progressDueInPool: '{due} / {total}',
+  gradesToday: '{n} ratings saved today',
   startReview: 'Repeat',
   forceSync: 'Cloud sync',
   reviewHintEmptyDeck: 'Add your first card.',

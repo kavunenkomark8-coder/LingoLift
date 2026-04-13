@@ -17,6 +17,42 @@ import { applyUiStrings, t } from './i18n.js';
 
 const LANG_PAIR_KEY = 'lingolift-lang-pair';
 const STUDY_GROUP_FILTER_KEY = 'lingolift-study-group-filter';
+const GRADES_TODAY_KEY = 'lingolift-grades-today';
+
+/** @returns {string} Local calendar day YYYY-M-D for resetting counters. */
+function calendarDayKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+}
+
+function bumpGradesToday() {
+  const dayKey = calendarDayKey();
+  try {
+    const raw = localStorage.getItem(GRADES_TODAY_KEY);
+    let count = 0;
+    if (raw) {
+      const p = JSON.parse(raw);
+      if (p && typeof p === 'object' && p.dayKey === dayKey && typeof p.count === 'number') count = p.count;
+    }
+    localStorage.setItem(GRADES_TODAY_KEY, JSON.stringify({ dayKey, count: count + 1 }));
+  } catch {
+    /* ignore */
+  }
+}
+
+/** @returns {number} */
+function getGradesTodayCount() {
+  const dayKey = calendarDayKey();
+  try {
+    const raw = localStorage.getItem(GRADES_TODAY_KEY);
+    if (!raw) return 0;
+    const p = JSON.parse(raw);
+    if (!p || typeof p !== 'object' || p.dayKey !== dayKey || typeof p.count !== 'number') return 0;
+    return Math.max(0, p.count);
+  } catch {
+    return 0;
+  }
+}
 /** Select value for cards with empty `groupLabel`. */
 const GROUP_FILTER_NONE = '__none__';
 
@@ -52,6 +88,7 @@ const els = {
   viewDashboard: document.getElementById('view-dashboard'),
   viewStudy: document.getElementById('view-study'),
   progressCount: document.getElementById('progress-count'),
+  progressGradesToday: document.getElementById('progress-grades-today'),
   dueBrainVisual: document.getElementById('due-brain-visual'),
   btnStartReview: document.getElementById('btn-start-review'),
   reviewHint: document.getElementById('review-hint'),
@@ -604,6 +641,17 @@ function renderDashboard() {
   els.progressCount.textContent =
     poolTotal === 0 ? t('progressZeroDue') : t('progressDueInPool', { due: dueCount, total: poolTotal });
 
+  const gradesN = getGradesTodayCount();
+  if (els.progressGradesToday) {
+    if (gradesN > 0) {
+      els.progressGradesToday.hidden = false;
+      els.progressGradesToday.textContent = t('gradesToday', { n: gradesN });
+    } else {
+      els.progressGradesToday.hidden = true;
+      els.progressGradesToday.textContent = '';
+    }
+  }
+
   if (poolTotal === 0) {
     if (total === 0) els.reviewHint.textContent = t('reviewHintEmptyDeck');
     else els.reviewHint.textContent = t('reviewHintNoCardsInGroup');
@@ -777,6 +825,8 @@ async function grade(hard) {
     const now = Date.now();
     const srs = computeNextSrs(hard, card.srsStep ?? 0, now);
     await updateCardSrs(card.id, srs);
+    bumpGradesToday();
+    renderDashboard();
     const slot = queueIndex;
     const fresh = getCards().find((c) => c.id === card.id);
     if (fresh && slot >= 0 && slot < queue.length) queue[slot] = fresh;

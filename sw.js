@@ -1,9 +1,9 @@
-const CACHE = 'lingolift-v54-due-now-count';
+const CACHE = 'lingolift-v55-sw-network-first';
 
 const ASSETS = [
   './',
   './index.html',
-  './css/styles.css?v=41-srs-sync-fallback',
+  './css/styles.css?v=55-progress-grades-line',
   './js/app.js',
   './js/i18n.js',
   './js/data-store.js',
@@ -80,6 +80,30 @@ self.addEventListener('fetch', (e) => {
 
   if (url.hostname === 'cdn.jsdelivr.net') {
     respondCacheFirstCdn(e);
+    return;
+  }
+
+  /** Same-origin app shell: network-first so Hard/Due-now fixes are not stuck behind stale SW cache. */
+  const path = url.pathname;
+  const pathOrQuery = path + url.search;
+  const isAppShell =
+    url.origin === self.location.origin &&
+    (path.endsWith('.html') ||
+      path.endsWith('.js') ||
+      /\.css(\?|$)/i.test(pathOrQuery) ||
+      path.endsWith('/'));
+
+  if (isAppShell) {
+    e.respondWith(
+      caches.open(CACHE).then((cache) =>
+        fetch(e.request)
+          .then((res) => {
+            if (res.ok) void cache.put(e.request, res.clone());
+            return res;
+          })
+          .catch(() => cache.match(e.request))
+      )
+    );
     return;
   }
 

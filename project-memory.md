@@ -1,7 +1,9 @@
 # LingoLift — project memory (for AI context)
 
-**Document version:** 21.3 (Due now dashboard count)  
-**App / Service Worker cache:** `lingolift-v54-due-now-count` (`sw.js` → `CACHE = 'lingolift-v54-due-now-count'`)
+**Document version:** 21.4 (SW network-first + grades-today line)  
+**App / Service Worker cache:** `lingolift-v55-sw-network-first` (`sw.js` → `CACHE = 'lingolift-v55-sw-network-first'`)
+
+**v21.4:** SW **network-first** for same-origin **`.html` / `.js` / `.css` / `/`** so UI fixes are not stuck on old cache-first shell. **`grade()`** calls **`bumpGradesToday()`** + **`renderDashboard()`** after **`updateCardSrs`**; dashboard shows **`gradesToday`** under the due line (**`#progress-grades-today`**). **`index.html`** **`app.js?v=55-sw-network-first`**, **`styles.css?v=55-progress-grades-line`**. SW precache CSS query aligned.
 
 **v21.3:** Dashboard header **`dueToday`** string → **Due now**; count uses **`dueNowQueue`** (**`nextReview <= Date.now()`**) instead of end-of-calendar-day, so **Hard** (+15 min) lowers the visible ratio immediately. **`studyRemaining`** copy → **left in session**. **`reviewHintFullPool`** clarifies empty **Due now** vs **Repeat** full pool. **`index.html`** **`js/app.js?v=54-due-now-count`**. SW **`lingolift-v54-due-now-count`**.
 
