@@ -1,4 +1,4 @@
-const CACHE = 'lingolift-v57-words-left-round';
+const CACHE = 'lingolift-v58-supabase-override';
 
 const ASSETS = [
   './',

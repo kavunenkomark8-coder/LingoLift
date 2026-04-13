@@ -372,7 +372,7 @@ async function ensureClient() {
   if (!supabase) {
     if (isPlaceholderSupabaseConfig()) {
       throw new Error(
-        'Supabase is not configured: edit js/supabase-config.js with your Project URL and anon key (see README).'
+        'Supabase is not configured: set url + anonKey in js/supabase-config.js, or globalThis.__LINGOLIFT_SUPABASE__ = { url, anonKey } before load (see README).'
       );
     }
     supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {

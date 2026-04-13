@@ -1,7 +1,9 @@
 # LingoLift — project memory (for AI context)
 
-**Document version:** 21.6 (study header = unpassed left in round)  
-**App / Service Worker cache:** `lingolift-v57-words-left-round` (`sw.js` → `CACHE = 'lingolift-v57-words-left-round'`)
+**Document version:** 21.7 (`__LINGOLIFT_SUPABASE__` + fallbacks)  
+**App / Service Worker cache:** `lingolift-v58-supabase-override` (`sw.js` → `CACHE = 'lingolift-v58-supabase-override'`)
+
+**v21.7:** **[`js/supabase-config.js`](js/supabase-config.js)** resolves **`SUPABASE_URL`** / **`SUPABASE_ANON_KEY`** from **`globalThis.__LINGOLIFT_SUPABASE__`** (`url`, `anonKey`) when set before modules load, else **`FALLBACK_*`** in file. README documents static hosting. **`ensureClient`** error text mentions override. **`index.html`** **`app.js?v=58-supabase-override`**. SW **`lingolift-v58-supabase-override`**.
 
 **v21.6:** Study **`updateSessionProgress`** shows **`studyWordsLeft`** / **`studyWordsLeftOne`**: **`queue.length - queueIndex`** = cards **not yet graded** this Repeat run (including current card). **`index.html`** **`app.js?v=57-words-left-round`**. SW **`lingolift-v57-words-left-round`**.
 
