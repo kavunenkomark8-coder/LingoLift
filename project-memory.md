@@ -1,9 +1,11 @@
 # LingoLift — project memory (for AI context)
 
-**Document version:** 20.6 (SRS unconditional cloud fallback)  
-**App / Service Worker cache:** `lingolift-v46-srs-unconditional-fallback` (`sw.js` → `CACHE = 'lingolift-v46-srs-unconditional-fallback'`)
+**Document version:** 20.7 (`group_label` cloud fallback)  
+**App / Service Worker cache:** `lingolift-v48-group-label-fallback` (`sw.js` → `CACHE = 'lingolift-v48-group-label-fallback'`)
 
-**v20.6:** **`fetchRemoteCards`**: if the **`srs_step`** select fails for **any** reason, retry **legacy select** once; on success, mark DB without **`srs_step`**. Same pattern for **insert/update** (outbox, **`addCard`**, **`updateCardSrs`**, legacy migrate): retry payload **without** **`srs_step`** when the first attempt included it; **`markDbSrsColumnUnsupported`** only when that retry succeeds. SW **`lingolift-v46-srs-unconditional-fallback`**.
+**v20.7:** Old DBs without **`group_label`**: **`fetchRemoteCards`** tries **`FETCH_SELECT_CHAIN`** (drop **`srs_step`**, then **`group_label`**, then both). **`insertCardWithCloudFallback`** / **`migrateLegacyIfNeeded`** mirror that. **`update_fields`** (outbox + **`updateCardFields`**) retries without **`group_label`**. Session flags **`dbSupportsGroupLabelColumn`** / **`dbSupportsSrsStepColumn`**. Run [sql/add_group_label.sql](sql/add_group_label.sql) in Supabase for full grouping in the cloud. SW **`lingolift-v48-group-label-fallback`**.
+
+**v20.6:** Unconditional **retry** of card **select/insert** when optional **`srs_step`** payload fails (superseded by **v20.7** chain). SW **`lingolift-v46-srs-unconditional-fallback`**.
 
 **v20.5:** **`runRefreshPipeline`** resets **`dbSupportsSrsStepColumn`** to **`true`** each sync so the client re-probes **`srs_step`** after SQL. SW **`lingolift-v44-srs-reprobe`**.
 
@@ -100,7 +102,7 @@
 
 ## Sync flow, `user_id`, RLS
 
-- **Fetch:** `fetchRemoteCards(client?)` — selects `id, word, translation, next_review, group_label, srs_step`; RLS must scope rows to the authenticated user.
+- **Fetch:** `fetchRemoteCards(client?)` — adaptive **`FETCH_SELECT_CHAIN`** (drops **`group_label`** / **`srs_step`** when missing on old DBs); RLS must scope rows to the authenticated user.
 - **Writes:** Inserts/outbox include **`user_id`** from the session.
 - **Outbox:** Offline/error replay via **`flushOutbox(userId, client?)`**. Ops: **`insert`** (with optional `group_label`, **`srs_step`**), **`update`** (SRS **`next_review`** + **`srs_step`**), **`update_fields`** (word, translation, `group_label`), **`delete`**.
 

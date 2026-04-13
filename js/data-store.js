@@ -84,8 +84,9 @@ let lastSyncedUserId = null;
 /** @type {Promise<{ ok: boolean, count?: number, userId?: string, reason?: string }> | null} */
 let refreshInFlight = null;
 
-/** Set false after PostgREST reports missing `srs_step` (DB without migration). Session-only. */
+/** Session flags: omit optional columns on writes when DB has no migration. */
 let dbSupportsSrsStepColumn = true;
+let dbSupportsGroupLabelColumn = true;
 
 /** Last cloud sync failure (cleared on success); for UI / support. */
 let lastSyncError = '';
@@ -108,12 +109,55 @@ function formatSyncErr(e) {
   return String(e).slice(0, 220);
 }
 
-const SELECT_CARDS_WITH_SRS =
-  'id, word, translation, next_review, group_label, srs_step';
-const SELECT_CARDS_LEGACY = 'id, word, translation, next_review, group_label';
+/** Richest-first `select` strings for old Supabase schemas missing optional columns. */
+const FETCH_SELECT_CHAIN = [
+  'id, word, translation, next_review, group_label, srs_step',
+  'id, word, translation, next_review, group_label',
+  'id, word, translation, next_review, srs_step',
+  'id, word, translation, next_review',
+];
 
-function markDbSrsColumnUnsupported() {
-  dbSupportsSrsStepColumn = false;
+/** @param {string} cols */
+function syncCapabilitiesFromSelectCols(cols) {
+  dbSupportsGroupLabelColumn = cols.includes('group_label');
+  dbSupportsSrsStepColumn = cols.includes('srs_step');
+}
+
+/** @param {Record<string, unknown>} p */
+function syncCapabilitiesFromInsertPayload(p) {
+  dbSupportsGroupLabelColumn = Object.prototype.hasOwnProperty.call(p, 'group_label');
+  dbSupportsSrsStepColumn = Object.prototype.hasOwnProperty.call(p, 'srs_step');
+}
+
+/**
+ * @param {Record<string, unknown>} baseCore id, user_id, word, translation, next_review
+ * @param {string} gl
+ * @param {number} srs
+ */
+function buildInsertPayloadVariants(baseCore, gl, srs) {
+  return [
+    { ...baseCore, group_label: gl, srs_step: srs },
+    { ...baseCore, group_label: gl },
+    { ...baseCore, srs_step: srs },
+    { ...baseCore },
+  ];
+}
+
+/**
+ * @param {import('@supabase/supabase-js').SupabaseClient} client
+ * @param {Record<string, unknown>} baseCore
+ */
+async function insertCardWithCloudFallback(client, baseCore, gl, srs) {
+  let lastErr = /** @type {unknown} */ (null);
+  for (const p of buildInsertPayloadVariants(baseCore, gl, srs)) {
+    const { error } = await client.from('cards').insert(p);
+    if (!error) {
+      syncCapabilitiesFromInsertPayload(p);
+      return;
+    }
+    lastErr = error;
+  }
+  throw lastErr;
 }
 
 function setSyncState(s) {
@@ -333,31 +377,17 @@ export async function getSupabaseContext() {
 
 async function fetchRemoteCards(clientOpt) {
   const client = clientOpt ?? (await ensureClient());
-  if (!dbSupportsSrsStepColumn) {
-    const { data, error } = await client
-      .from('cards')
-      .select(SELECT_CARDS_LEGACY)
-      .order('next_review', { ascending: true });
-    if (error) throw error;
+  let lastErr = /** @type {unknown} */ (null);
+  for (const cols of FETCH_SELECT_CHAIN) {
+    const { data, error } = await client.from('cards').select(cols).order('next_review', { ascending: true });
+    if (error) {
+      lastErr = error;
+      continue;
+    }
+    syncCapabilitiesFromSelectCols(cols);
     return (data || []).map(fromRow);
   }
-
-  const full = await client
-    .from('cards')
-    .select(SELECT_CARDS_WITH_SRS)
-    .order('next_review', { ascending: true });
-  if (!full.error) return (full.data || []).map(fromRow);
-
-  const firstErr = full.error;
-  const legacy = await client
-    .from('cards')
-    .select(SELECT_CARDS_LEGACY)
-    .order('next_review', { ascending: true });
-  if (!legacy.error) {
-    markDbSrsColumnUnsupported();
-    return (legacy.data || []).map(fromRow);
-  }
-  throw firstErr;
+  throw lastErr;
 }
 
 async function flushOutbox(userId, clientOpt) {
@@ -371,22 +401,14 @@ async function flushOutbox(userId, clientOpt) {
       if (item.op === 'insert') {
         const gl = normalizeGroupLabel(item.group_label ?? '');
         const srs = clampSrsStep(item.srs_step ?? 0);
-        const baseRow = {
+        const baseCore = {
           id: item.id,
           user_id: userId,
           word: item.word,
           translation: item.translation,
           next_review: item.next_review,
-          group_label: gl,
         };
-        const payload = dbSupportsSrsStepColumn ? { ...baseRow, srs_step: srs } : baseRow;
-        let { error } = await client.from('cards').insert(payload);
-        if (error && dbSupportsSrsStepColumn && 'srs_step' in payload) {
-          const first = error;
-          ({ error } = await client.from('cards').insert(baseRow));
-          if (!error) markDbSrsColumnUnsupported();
-          else throw first;
-        } else if (error) throw error;
+        await insertCardWithCloudFallback(client, baseCore, gl, srs);
       } else if (item.op === 'update') {
         const srs = clampSrsStep(item.srs_step ?? 0);
         const withSrs = {
@@ -403,21 +425,30 @@ async function flushOutbox(userId, clientOpt) {
         if (error && dbSupportsSrsStepColumn && 'srs_step' in upPayload) {
           const first = error;
           ({ error } = await client.from('cards').update(legacyUp).eq('id', item.id));
-          if (!error) markDbSrsColumnUnsupported();
+          if (!error) dbSupportsSrsStepColumn = false;
           else throw first;
         } else if (error) throw error;
       } else if (item.op === 'update_fields') {
         const gl = normalizeGroupLabel(item.group_label);
-        const { error } = await client
-          .from('cards')
-          .update({
-            word: item.word,
-            translation: item.translation,
-            group_label: gl,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', item.id);
-        if (error) throw error;
+        const ts = new Date().toISOString();
+        const withG = {
+          word: item.word,
+          translation: item.translation,
+          group_label: gl,
+          updated_at: ts,
+        };
+        const noG = {
+          word: item.word,
+          translation: item.translation,
+          updated_at: ts,
+        };
+        let { error } = await client.from('cards').update(withG).eq('id', item.id);
+        if (error && dbSupportsGroupLabelColumn) {
+          const first = error;
+          ({ error } = await client.from('cards').update(noG).eq('id', item.id));
+          if (!error) dbSupportsGroupLabelColumn = false;
+          else throw first;
+        } else if (error) throw error;
       } else if (item.op === 'delete') {
         const { error } = await client.from('cards').delete().eq('id', item.id);
         if (error) throw error;
@@ -452,26 +483,28 @@ async function migrateLegacyIfNeeded(userId, remote, clientOpt) {
   }
 
   const client = clientOpt ?? (await ensureClient());
-  const rows = legacy.map((c) => ({
-    id: crypto.randomUUID(),
-    user_id: userId,
-    word: c.word,
-    translation: c.translation,
-    next_review: new Date(c.nextReview).toISOString(),
-    group_label: normalizeGroupLabel(c.groupLabel),
-    srs_step: clampSrsStep(c.srsStep),
-  }));
-
-  let { error } = await client.from('cards').insert(rows);
-  if (!error) {
-    localStorage.removeItem(LEGACY_KEY);
-    return true;
-  }
-  if (dbSupportsSrsStepColumn) {
-    const slim = rows.map(({ srs_step, ...r }) => r);
-    ({ error } = await client.from('cards').insert(slim));
+  const attempts = [
+    [true, true],
+    [true, false],
+    [false, true],
+    [false, false],
+  ];
+  for (const [incG, incS] of attempts) {
+    const rows = legacy.map((c) => {
+      const r = {
+        id: crypto.randomUUID(),
+        user_id: userId,
+        word: c.word,
+        translation: c.translation,
+        next_review: new Date(c.nextReview).toISOString(),
+      };
+      if (incG) r.group_label = normalizeGroupLabel(c.groupLabel);
+      if (incS) r.srs_step = clampSrsStep(c.srsStep);
+      return r;
+    });
+    const { error } = await client.from('cards').insert(rows);
     if (!error) {
-      markDbSrsColumnUnsupported();
+      syncCapabilitiesFromInsertPayload(rows[0]);
       localStorage.removeItem(LEGACY_KEY);
       return true;
     }
@@ -482,8 +515,9 @@ async function migrateLegacyIfNeeded(userId, remote, clientOpt) {
 async function runRefreshPipeline() {
   setSyncState('syncing');
   try {
-    /* Re-probe server each sync so a tab opened before migration picks up `srs_step` after SQL runs. */
+    /* Re-probe optional columns after migrations. */
     dbSupportsSrsStepColumn = true;
+    dbSupportsGroupLabelColumn = true;
     const { client, userId } = await ensureSession();
     lastSyncedUserId = userId;
     await flushOutbox(userId, client);
@@ -577,22 +611,14 @@ export async function addCard(word, translation, groupLabel = '') {
 
   try {
     const { client, userId } = await ensureSession();
-    const baseIns = {
+    const baseCore = {
       id,
       user_id: userId,
       word: w,
       translation: t,
       next_review,
-      group_label: gl,
     };
-    const ins = dbSupportsSrsStepColumn ? { ...baseIns, srs_step: 0 } : baseIns;
-    let { error } = await client.from('cards').insert(ins);
-    if (error && dbSupportsSrsStepColumn && 'srs_step' in ins) {
-      const first = error;
-      ({ error } = await client.from('cards').insert(baseIns));
-      if (!error) markDbSrsColumnUnsupported();
-      else throw first;
-    } else if (error) throw error;
+    await insertCardWithCloudFallback(client, baseCore, gl, 0);
     await refreshFromRemote();
     return card;
   } catch (e) {
@@ -642,7 +668,7 @@ export async function updateCardSrs(cardId, srs) {
     if (error && dbSupportsSrsStepColumn && 'srs_step' in up) {
       const first = error;
       ({ error } = await client.from('cards').update(legacyUp).eq('id', cardId));
-      if (!error) markDbSrsColumnUnsupported();
+      if (!error) dbSupportsSrsStepColumn = false;
       else throw first;
     } else if (error) throw error;
     await refreshFromRemote();
@@ -682,16 +708,16 @@ export async function updateCardFields(cardId, fields) {
 
   try {
     const { client } = await ensureSession();
-    const { error } = await client
-      .from('cards')
-      .update({
-        word: w,
-        translation: tr,
-        group_label: gl,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', cardId);
-    if (error) throw error;
+    const ts = new Date().toISOString();
+    const withG = { word: w, translation: tr, group_label: gl, updated_at: ts };
+    const noG = { word: w, translation: tr, updated_at: ts };
+    let { error } = await client.from('cards').update(withG).eq('id', cardId);
+    if (error && dbSupportsGroupLabelColumn) {
+      const first = error;
+      ({ error } = await client.from('cards').update(noG).eq('id', cardId));
+      if (!error) dbSupportsGroupLabelColumn = false;
+      else throw first;
+    } else if (error) throw error;
     await refreshFromRemote();
     return true;
   } catch (e) {
