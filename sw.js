@@ -1,4 +1,4 @@
-const CACHE = 'lingolift-v43-sync-error-detail';
+const CACHE = 'lingolift-v44-srs-reprobe';
 
 const ASSETS = [
   './',

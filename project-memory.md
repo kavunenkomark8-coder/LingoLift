@@ -1,7 +1,9 @@
 # LingoLift — project memory (for AI context)
 
-**Document version:** 20.4 (Sync error detail in UI)  
-**App / Service Worker cache:** `lingolift-v43-sync-error-detail` (`sw.js` → `CACHE = 'lingolift-v43-sync-error-detail'`)
+**Document version:** 20.5 (SRS cloud retry + reprobe)  
+**App / Service Worker cache:** `lingolift-v44-srs-reprobe` (`sw.js` → `CACHE = 'lingolift-v44-srs-reprobe'`)
+
+**v20.5:** **`runRefreshPipeline`** resets **`dbSupportsSrsStepColumn`** to **`true`** each sync so DB picks up **`srs_step`** after SQL without a cold reload. Broader **`isSrsStepOrUnknownColumnCloudError`** (PGRST204, 42703, “Could not find … column of ‘cards’”) drives fetch/outbox/add/update fallbacks. SW **`lingolift-v44-srs-reprobe`**.
 
 **v20.4:** **`getLastSyncError`** / **`lastSyncError`** in **`js/data-store.js`**; failed refresh returns **`detail`**; footer **Cloud sync** toast shows **`toastSyncFailedReason`**; **`#sync-status`** **`title`** tooltip when sync is error. SW **`lingolift-v43-sync-error-detail`**.
 
