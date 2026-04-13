@@ -1,11 +1,13 @@
 # LingoLift — project memory (for AI context)
 
-**Document version:** 20.9 (grade single-flight + queue resync)  
-**App / Service Worker cache:** `lingolift-v50-grade-single-flight` (`sw.js` → `CACHE = 'lingolift-v50-grade-single-flight'`)
+**Document version:** 21.0 (sync UX, outbox diagnostics, deploy docs)  
+**App / Service Worker cache:** `lingolift-v51-sync-ux-docs` (`sw.js` → `CACHE = 'lingolift-v51-sync-ux-docs'`)
+
+**v21.0:** **Sync expectations** documented (anonymous **per device** vs SQL row counts; dashboard account id vs **`user_id`**). **`flushOutbox`** failures set **`lastOutboxFlushError`** + **`console.error('[LingoLift] outbox', …)`**; **`getLastOutboxFlushError()`** exposed for tooltips (**`#sync-status`**, **`#account-hint`**). Stale **`setCards(remote)`** skip schedules **`scheduleDeferredRefreshMerge()`** (~1.4s deferred **`refreshFromRemote`**). **Cloud sync** shows **`toastSyncStaleRetrying`** when **`skippedStale`**, not the footer ✅ flash. Removed temporary **debug ingest** `fetch` blocks. Added **[`README.md`](README.md)** and **[`js/supabase-config.example.js`](js/supabase-config.example.js)**. How-to strings **`howtoLi3`** / **`howtoLi6`** updated. SW **`lingolift-v51-sync-ux-docs`**.
 
 **v20.9:** **`grade()`** uses **`gradeInFlight`**: overlapping Hard/Easy (double tap, swipe + key, etc.) is ignored so a second call cannot reuse the same **`queueIndex`** / stale **`srsStep`**. After **`updateCardSrs`**, the current queue slot is replaced with the canonical object from **`getCards()`** ( **`setCards`** replaces in-store references, so the study queue could otherwise keep stale refs). Hard/Easy buttons disabled for the await window. SW **`lingolift-v50-grade-single-flight`**.
 
-**v20.8:** **Study grades** no longer **`await refreshFromRemote()`** after a successful cloud **`update`** in **`updateCardSrs`** (local cache + Supabase row are already updated; full fetch was redundant and could race with an in-flight refresh). **`localDataEpoch`** is bumped on local writes (**`addCard`**, **`updateCardSrs`**, **`updateCardFields`**, **`deleteCard`**); **`runRefreshPipeline`** skips **`setCards(remote)`** if the epoch changed mid-flight so a slow init sync cannot overwrite fresh SRS. SW **`lingolift-v49-srs-stale-refresh-guard`**. (Temporary **debug ingest** `fetch` regions may remain in **`js/app.js`** / **`js/data-store.js`** until a verification run; remove after confirmation.)
+**v20.8:** **Study grades** no longer **`await refreshFromRemote()`** after a successful cloud **`update`** in **`updateCardSrs`** (local cache + Supabase row are already updated; full fetch was redundant and could race with an in-flight refresh). **`localDataEpoch`** is bumped on local writes (**`addCard`**, **`updateCardSrs`**, **`updateCardFields`**, **`deleteCard`**); **`runRefreshPipeline`** skips **`setCards(remote)`** if the epoch changed mid-flight so a slow init sync cannot overwrite fresh SRS. SW **`lingolift-v49-srs-stale-refresh-guard`**.
 
 **v20.7:** Old DBs without **`group_label`**: **`fetchRemoteCards`** tries **`FETCH_SELECT_CHAIN`** (drop **`srs_step`**, then **`group_label`**, then both). **`insertCardWithCloudFallback`** / **`migrateLegacyIfNeeded`** mirror that. **`update_fields`** (outbox + **`updateCardFields`**) retries without **`group_label`**. Session flags **`dbSupportsGroupLabelColumn`** / **`dbSupportsSrsStepColumn`**. Run [sql/add_group_label.sql](sql/add_group_label.sql) in Supabase for full grouping in the cloud. SW **`lingolift-v48-group-label-fallback`**.
 
@@ -69,7 +71,7 @@
 
 - **Frontend:** Vanilla JS (ES modules), no framework. Entry: `index.html` → `js/app.js`.
 - **UI strings:** `js/i18n.js` — single **`strings`** object (English); **`t(key, vars)`** and **`applyUiStrings()`** populate `[data-i18n]`, `[data-i18n-html]`, placeholders, titles. No `localStorage` language preference for UI locale (English fixed); **`lingolift-lang-pair`** stores only GTX source/target codes.
-- **Data & cloud:** `js/data-store.js` — Supabase JS client (`@supabase/supabase-js` via importmap), anonymous auth session, table **`cards`** with **`group_label`** and **`srs_step`**. **Supabase Storage is not used** in this repo.
+- **Data & cloud:** `js/data-store.js` — Supabase JS client (`@supabase/supabase-js` via importmap), anonymous auth session, table **`cards`** with **`group_label`** and **`srs_step`**. Credentials in **`js/supabase-config.js`** (copy from **`js/supabase-config.example.js`**). **Supabase Storage is not used** in this repo.
 - **Offline / PWA:** `sw.js` precaches shell assets + icons; GET to `*.supabase.co` is network-first; **`cdn.jsdelivr.net`** and **`esm.sh`** are cache-first for offline libs (e.g. Supabase ESM). Local cache: `localStorage` keys `lingolift-cards-cache`, `lingolift-sync-outbox`, legacy `lingolift-cards`; **`lingolift-study-group-filter`**, **`lingolift-lang-pair`**.
 
 ---
@@ -106,9 +108,12 @@
 
 ## Sync flow, `user_id`, RLS
 
-- **Fetch:** `fetchRemoteCards(client?)` — adaptive **`FETCH_SELECT_CHAIN`** (drops **`group_label`** / **`srs_step`** when missing on old DBs); RLS must scope rows to the authenticated user.
+- **Anonymous = per device/profile:** `signInAnonymously()` creates a distinct **`auth.users`** row per browser storage partition. RLS policies in [`sql/cards.sql`](sql/cards.sql) restrict **`cards`** to **`auth.uid() = user_id`**. The dashboard hint **Synced · account …{id}** is the tail of that UUID — it should match **`user_id`** on rows this client owns. **`select count(*) from public.cards`** in SQL Editor counts **every** user's rows, so it will not match the in-app card count unless you filter by **`user_id`**.
+- **Fetch:** `fetchRemoteCards(client?)` — adaptive **`FETCH_SELECT_CHAIN`** (drops **`group_label`** / **`srs_step`** when missing on old DBs); RLS scopes rows to the authenticated user.
 - **Writes:** Inserts/outbox include **`user_id`** from the session.
-- **Outbox:** Offline/error replay via **`flushOutbox(userId, client?)`**. Ops: **`insert`** (with optional `group_label`, **`srs_step`**), **`update`** (SRS **`next_review`** + **`srs_step`**), **`update_fields`** (word, translation, `group_label`), **`delete`**.
+- **Outbox:** Offline/error replay via **`flushOutbox(userId, client?)`**. Ops: **`insert`** (with optional `group_label`, **`srs_step`**), **`update`** (SRS **`next_review`** + **`srs_step`**), **`update_fields`** (word, translation, `group_label`), **`delete`**. Failures set **`lastOutboxFlushError`** and **`console.error('[LingoLift] outbox', …)`**; **`getLastOutboxFlushError()`** surfaces the latest message in the sync tooltip with **`getLastSyncError()`**.
+- **Stale refresh skip:** If **`localDataEpoch`** changes while **`runRefreshPipeline`** is in flight, **`setCards(remote)`** is skipped (avoids overwriting fresh SRS). The pipeline returns **`{ ok: true, skippedStale: true }`** and schedules a **deferred** **`refreshFromRemote()`** (~1.4s) to merge when idle. **Cloud sync** treats **`skippedStale`** as informational (toast **`toastSyncStaleRetrying`**, no footer ✅ flash).
+- **Deploy config:** Copy [`js/supabase-config.example.js`](js/supabase-config.example.js) → **`js/supabase-config.js`**; see [README.md](README.md).
 
 ---
 
@@ -131,7 +136,8 @@
 | UI shell   | `index.html`, `css/styles.css` |
 | App logic  | `js/app.js` |
 | UI strings | `js/i18n.js` |
-| Supabase   | `js/data-store.js`, `js/supabase-config.js`, `sql/cards.sql`, `sql/add_group_label.sql` |
+| Supabase   | `js/data-store.js`, `js/supabase-config.js`, `js/supabase-config.example.js`, `sql/cards.sql`, `sql/add_group_label.sql` |
 | PWA cache  | `sw.js`, `manifest.json`, root `android-chrome-*.png` |
+| Onboarding | `README.md` |
 
 **When you change versioned behavior** (SW bump, sync contract, translate API, major UI rules), **update this file** so the next session stays aligned.

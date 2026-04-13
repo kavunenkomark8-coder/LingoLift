@@ -81,8 +81,24 @@ let syncState = 'idle';
 /** Last user_id used for a successful cloud fetch (anonymous differs per device). */
 let lastSyncedUserId = null;
 
-/** @type {Promise<{ ok: boolean, count?: number, userId?: string, reason?: string }> | null} */
+/**
+ * @type {Promise<{ ok: boolean, count?: number, userId?: string, reason?: string, detail?: string, skippedStale?: boolean }> | null}
+ */
 let refreshInFlight = null;
+
+/** @type {ReturnType<typeof setTimeout> | null} */
+let deferredRefreshTimer = null;
+const DEFERRED_REFRESH_MS = 1400;
+
+/** After a stale skip, merge remote once local writes have likely finished. */
+function scheduleDeferredRefreshMerge() {
+  if (deferredRefreshTimer != null) clearTimeout(deferredRefreshTimer);
+  deferredRefreshTimer = setTimeout(() => {
+    deferredRefreshTimer = null;
+    if (!navigator.onLine) return;
+    void refreshFromRemote();
+  }, DEFERRED_REFRESH_MS);
+}
 
 /**
  * Incremented on local card writes so a refresh that started earlier cannot call
@@ -100,9 +116,17 @@ let dbSupportsGroupLabelColumn = true;
 /** Last cloud sync failure (cleared on success); for UI / support. */
 let lastSyncError = '';
 
+/** Last outbox replay failure (cleared when a flush pass starts). */
+let lastOutboxFlushError = '';
+
 /** @returns {string} */
 export function getLastSyncError() {
   return lastSyncError;
+}
+
+/** @returns {string} */
+export function getLastOutboxFlushError() {
+  return lastOutboxFlushError;
 }
 
 /** @param {unknown} e */
@@ -402,6 +426,7 @@ async function fetchRemoteCards(clientOpt) {
 async function flushOutbox(userId, clientOpt) {
   const client = clientOpt ?? (await ensureClient());
   let box = readOutbox();
+  lastOutboxFlushError = '';
   if (box.length === 0) return;
 
   const next = [];
@@ -462,7 +487,10 @@ async function flushOutbox(userId, clientOpt) {
         const { error } = await client.from('cards').delete().eq('id', item.id);
         if (error) throw error;
       }
-    } catch {
+    } catch (e) {
+      const detail = formatSyncErr(e);
+      lastOutboxFlushError = `${item.op} ${item.id}: ${detail}`;
+      console.error('[LingoLift] outbox', item.op, item.id, e);
       next.push(item);
     }
   }
@@ -535,23 +563,9 @@ async function runRefreshPipeline() {
     const migrated = await migrateLegacyIfNeeded(userId, remote, client);
     if (migrated) remote = await fetchRemoteCards(client);
     if (epochAtStart !== localDataEpoch) {
-      // #region agent log
-      fetch('http://127.0.0.1:7770/ingest/f28725a2-8b86-4957-bd9a-2bd7faac78d5', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'a7dc01' },
-        body: JSON.stringify({
-          sessionId: 'a7dc01',
-          runId: 'post-fix',
-          hypothesisId: 'H3',
-          location: 'data-store.js:runRefreshPipeline:skipStale',
-          message: 'skipped setCards; local mutation during refresh',
-          data: { epochAtStart, localDataEpoch },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
-      // #endregion
       lastSyncError = '';
       setSyncState('idle');
+      scheduleDeferredRefreshMerge();
       return { ok: true, count: cards.length, userId, skippedStale: true };
     }
     setCards(remote);
@@ -571,22 +585,6 @@ async function runRefreshPipeline() {
  * Do not call from inside ensureSession — use auth listener for post–sign-in runs.
  */
 export function refreshFromRemote() {
-  // #region agent log
-  const _reuse = !!refreshInFlight;
-  fetch('http://127.0.0.1:7770/ingest/f28725a2-8b86-4957-bd9a-2bd7faac78d5', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'a7dc01' },
-    body: JSON.stringify({
-      sessionId: 'a7dc01',
-      runId: 'post-fix',
-      hypothesisId: 'H2',
-      location: 'data-store.js:refreshFromRemote',
-      message: 'refresh entry',
-      data: { reuseInFlight: _reuse, online: navigator.onLine },
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {});
-  // #endregion
   if (!navigator.onLine) {
     setSyncState('offline');
     return Promise.resolve({ ok: false, reason: 'offline' });
@@ -686,21 +684,6 @@ export async function updateCardSrs(cardId, srs) {
   const next_review = new Date(srs.nextReviewMs).toISOString();
   const srs_step = clampSrsStep(srs.srsStep);
   const idx = cards.findIndex((c) => c.id === cardId);
-  // #region agent log
-  fetch('http://127.0.0.1:7770/ingest/f28725a2-8b86-4957-bd9a-2bd7faac78d5', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'a7dc01' },
-    body: JSON.stringify({
-      sessionId: 'a7dc01',
-      runId: 'post-fix',
-      hypothesisId: 'H1',
-      location: 'data-store.js:updateCardSrs:entry',
-      message: 'updateCardSrs findIndex',
-      data: { cardId, idx, cardsLen: cards.length, targetNextMs: srs.nextReviewMs },
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {});
-  // #endregion
   if (idx === -1) return;
   bumpLocalDataEpoch();
   const next = cards.slice();
@@ -734,22 +717,6 @@ export async function updateCardSrs(cardId, srs) {
       if (!error) dbSupportsSrsStepColumn = false;
       else throw first;
     } else if (error) throw error;
-    // #region agent log
-    const _local = cards.find((c) => c.id === cardId)?.nextReview;
-    fetch('http://127.0.0.1:7770/ingest/f28725a2-8b86-4957-bd9a-2bd7faac78d5', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'a7dc01' },
-      body: JSON.stringify({
-        sessionId: 'a7dc01',
-        runId: 'post-fix',
-        hypothesisId: 'H3',
-        location: 'data-store.js:updateCardSrs:afterDbUpdate',
-        message: 'local nextReview after cloud update (no full refresh)',
-        data: { cardId, nextReviewMs: _local, expectedMs: srs.nextReviewMs, match: _local === srs.nextReviewMs },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
   } catch (e) {
     console.error(e);
     const box = readOutbox();

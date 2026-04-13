@@ -8,6 +8,7 @@ import {
   getSyncState,
   getLastSyncedUserId,
   getLastSyncError,
+  getLastOutboxFlushError,
   refreshFromRemote,
   forceFullSyncFromSupabase,
   computeNextSrs,
@@ -562,7 +563,7 @@ function updateSyncLabel() {
     els.syncDynamicRow?.classList.add('sync-dynamic-row--visible');
   } else if (s === 'error') {
     els.syncStatus.textContent = t('syncError');
-    const errHint = getLastSyncError();
+    const errHint = getLastSyncError() || getLastOutboxFlushError();
     if (errHint) els.syncStatus.setAttribute('title', errHint);
     else els.syncStatus.removeAttribute('title');
     els.syncStatus.classList.add('sync-status--action');
@@ -617,12 +618,16 @@ function renderDashboard() {
   }
 
   const uid = getLastSyncedUserId();
+  const obErr = getLastOutboxFlushError();
   if (uid) {
     els.accountHint.hidden = false;
     els.accountHint.textContent = t('accountHint', { id: uid.slice(-8) });
+    if (obErr) els.accountHint.setAttribute('title', obErr);
+    else els.accountHint.removeAttribute('title');
   } else {
     els.accountHint.hidden = true;
     els.accountHint.textContent = '';
+    els.accountHint.removeAttribute('title');
   }
 
   if (els.deckPanel?.classList.contains('deck-panel--open')) {
@@ -762,21 +767,6 @@ function startReview() {
 
 async function grade(hard) {
   if (gradeInFlight) {
-    // #region agent log
-    fetch('http://127.0.0.1:7770/ingest/f28725a2-8b86-4957-bd9a-2bd7faac78d5', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'a7dc01' },
-      body: JSON.stringify({
-        sessionId: 'a7dc01',
-        runId: 'post-fix',
-        hypothesisId: 'H5',
-        location: 'app.js:grade:skippedConcurrent',
-        message: 'grade ignored while previous grade in flight',
-        data: { hard, queueIndex },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
     return;
   }
   const card = queue[queueIndex];
@@ -787,47 +777,10 @@ async function grade(hard) {
   try {
     const now = Date.now();
     const srs = computeNextSrs(hard, card.srsStep ?? 0, now);
-    // #region agent log
-    fetch('http://127.0.0.1:7770/ingest/f28725a2-8b86-4957-bd9a-2bd7faac78d5', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'a7dc01' },
-      body: JSON.stringify({
-        sessionId: 'a7dc01',
-        runId: 'post-fix',
-        hypothesisId: 'H4',
-        location: 'app.js:grade:beforeUpdate',
-        message: 'grade start',
-        data: {
-          cardId: card.id,
-          hard,
-          queueIndex,
-          queueLen: queue.length,
-          srsNextMs: srs.nextReviewMs,
-          srsStep: srs.srsStep,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
     await updateCardSrs(card.id, srs);
     const slot = queueIndex;
     const fresh = getCards().find((c) => c.id === card.id);
     if (fresh && slot >= 0 && slot < queue.length) queue[slot] = fresh;
-    // #region agent log
-    fetch('http://127.0.0.1:7770/ingest/f28725a2-8b86-4957-bd9a-2bd7faac78d5', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'a7dc01' },
-      body: JSON.stringify({
-        sessionId: 'a7dc01',
-        runId: 'post-fix',
-        hypothesisId: 'H4',
-        location: 'app.js:grade:afterUpdate',
-        message: 'grade after updateCardSrs',
-        data: { cardId: card.id, queueIndexBeforeInc: queueIndex, syncedSrsStep: fresh?.srsStep },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
 
     queueIndex += 1;
     if (queueIndex >= queue.length) {
@@ -1002,7 +955,9 @@ els.btnForceSync.addEventListener('click', async () => {
   els.btnForceSync.disabled = true;
   try {
     const r = await forceFullSyncFromSupabase();
-    if (r.ok) {
+    if (r.ok && r.skippedStale) {
+      showToast(t('toastSyncStaleRetrying'));
+    } else if (r.ok) {
       els.btnForceSync.classList.add('btn-footer-sync--success');
       if (els.btnFooterSyncText) els.btnFooterSyncText.textContent = '✅';
       els.btnForceSync.setAttribute('aria-label', t('footerSyncCompleteAria'));

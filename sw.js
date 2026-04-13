@@ -1,4 +1,4 @@
-const CACHE = 'lingolift-v50-grade-single-flight';
+const CACHE = 'lingolift-v51-sync-ux-docs';
 
 const ASSETS = [
   './',

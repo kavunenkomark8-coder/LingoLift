@@ -1,6 +1,13 @@
 -- LingoLift — run in Supabase SQL Editor (Dashboard → SQL → New query)
 --
 -- Before using the app: Authentication → Providers → enable "Anonymous" sign-ins.
+--
+-- Anonymous auth: each browser / device profile gets its own auth.users row and thus
+-- its own RLS-scoped rows in `cards`. The Table Editor and `select count(*) from cards`
+-- show ALL users' rows; the app only loads rows for the current session's user_id.
+-- Compare the dashboard "Synced · account …" suffix with `user_id` in SQL when debugging.
+-- To share one deck across devices you need a shared sign-in (e.g. email magic link) or
+-- a one-off admin merge — see merge-anonymous-users.sql.
 
 -- 1) Table
 create table if not exists public.cards (

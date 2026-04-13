@@ -7,10 +7,12 @@ export const strings = {
   howtoTitle: 'How to use',
   howtoLi1: 'Add words + translation.',
   howtoLi2: 'Tap "Repeat" to run through the whole filtered set (spaced repetition on each answer).',
-  howtoLi3: 'Progress syncs to the cloud.',
+  howtoLi3:
+    'Progress syncs to the cloud under <strong>this browser\'s anonymous account</strong> (see account id on the dashboard). Another device uses a different id unless you add a shared sign-in later.',
   howtoLi4: 'Use "Cloud sync" at the bottom if the device lacks cards.',
   howtoLi5: 'Works offline — cards sync automatically when you reconnect.',
-  howtoLi6: 'Use "Cloud sync" on any new device to restore your full deck.',
+  howtoLi6:
+    'In Supabase SQL, <code>count(*)</code> on <code>cards</code> counts every user\'s rows; the app only shows cards for the current account id.',
   howtoLi7:
     'Large screen: <kbd>Space</kbd> or <kbd>Enter</kbd> reveals the answer; <kbd>1</kbd> / <kbd>H</kbd> = Hard, <kbd>2</kbd> / <kbd>E</kbd> = Easy.',
   howtoLi8:
@@ -75,6 +77,7 @@ export const strings = {
   toastOfflineCloud: 'Offline.',
   toastSyncFailed: 'Sync failed.',
   toastSyncFailedReason: 'Sync failed: {reason}',
+  toastSyncStaleRetrying: 'Saving in progress — cloud list will merge in a moment.',
   ariaDashboard: 'Dashboard',
   ariaStudy: 'Study',
   translateWandTooltip: 'Auto-translate',
