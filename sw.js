@@ -1,9 +1,9 @@
-const CACHE = 'lingolift-v34-smooth-disclosures';
+const CACHE = 'lingolift-v40-full-pool-queue';
 
 const ASSETS = [
   './',
   './index.html',
-  './css/styles.css',
+  './css/styles.css?v=40-full-pool-queue',
   './js/app.js',
   './js/i18n.js',
   './js/data-store.js',

@@ -5,7 +5,7 @@ const CACHE_KEY = 'lingolift-cards-cache';
 const OUTBOX_KEY = 'lingolift-sync-outbox';
 const LEGACY_KEY = 'lingolift-cards';
 
-/** @typedef {{ id: string, word: string, translation: string, nextReview: number, groupLabel: string }} Card */
+/** @typedef {{ id: string, word: string, translation: string, nextReview: number, groupLabel: string, srsStep: number }} Card */
 /**
  * @typedef {{
  *   op: 'insert',
@@ -14,10 +14,12 @@ const LEGACY_KEY = 'lingolift-cards';
  *   translation: string,
  *   next_review: string,
  *   group_label?: string,
+ *   srs_step?: number,
  * } | {
  *   op: 'update',
  *   id: string,
  *   next_review: string,
+ *   srs_step?: number,
  * } | {
  *   op: 'update_fields',
  *   id: string,
@@ -30,10 +32,39 @@ const LEGACY_KEY = 'lingolift-cards';
  * }} OutboxItem
  */
 
-const HARD_MS = 6 * 60 * 60 * 1000;
-const EASY_MS = 3 * 24 * 60 * 60 * 1000;
+/** Hard: always reschedule this far ahead and reset Easy ladder index to 0. */
+export const HARD_DELAY_MS = 15 * 60 * 1000;
 
-export { HARD_MS, EASY_MS };
+/** Next Easy delay by current `srsStep` (0..4): 2h, 6h, 24h, 72h, 1w. */
+export const EASY_INTERVALS_MS = Object.freeze([
+  2 * 60 * 60 * 1000,
+  6 * 60 * 60 * 1000,
+  24 * 60 * 60 * 1000,
+  72 * 60 * 60 * 1000,
+  7 * 24 * 60 * 60 * 1000,
+]);
+
+/** @param {unknown} n */
+export function clampSrsStep(n) {
+  if (typeof n !== 'number' || !Number.isFinite(n)) return 0;
+  return Math.max(0, Math.min(4, Math.floor(n)));
+}
+
+/**
+ * @param {boolean} hard
+ * @param {number} srsStep
+ * @param {number} [nowMs]
+ */
+export function computeNextSrs(hard, srsStep, nowMs = Date.now()) {
+  const step = clampSrsStep(srsStep);
+  if (hard) {
+    return { nextReviewMs: nowMs + HARD_DELAY_MS, srsStep: 0 };
+  }
+  return {
+    nextReviewMs: nowMs + EASY_INTERVALS_MS[step],
+    srsStep: Math.min(4, step + 1),
+  };
+}
 
 /** @type {import('@supabase/supabase-js').SupabaseClient | null} */
 let supabase = null;
@@ -115,12 +146,17 @@ function validOutboxItem(item) {
       typeof o.id === 'string' &&
       typeof o.word === 'string' &&
       typeof o.translation === 'string' &&
-      typeof o.next_review === 'string'
+      typeof o.next_review === 'string' &&
+      (o.srs_step === undefined || (typeof o.srs_step === 'number' && Number.isFinite(o.srs_step)))
     );
   }
   if (op === 'update') {
     const o = /** @type {Record<string, unknown>} */ (item);
-    return typeof o.id === 'string' && typeof o.next_review === 'string';
+    return (
+      typeof o.id === 'string' &&
+      typeof o.next_review === 'string' &&
+      (o.srs_step === undefined || (typeof o.srs_step === 'number' && Number.isFinite(o.srs_step)))
+    );
   }
   if (op === 'update_fields') {
     const o = /** @type {Record<string, unknown>} */ (item);
@@ -151,7 +187,8 @@ function validCard(c) {
 /** @param {Card} c */
 function normalizeCardGroup(c) {
   const gl = 'groupLabel' in c && typeof c.groupLabel === 'string' ? c.groupLabel.trim() : '';
-  return { ...c, groupLabel: gl };
+  const srsStep = clampSrsStep('srsStep' in c ? c.srsStep : 0);
+  return { ...c, groupLabel: gl, srsStep };
 }
 
 /** @param {Record<string, unknown>} row */
@@ -165,6 +202,7 @@ function fromRow(row) {
     translation: String(row.translation),
     nextReview: ms,
     groupLabel: gl,
+    srsStep: clampSrsStep(row.srs_step),
   };
 }
 
@@ -265,7 +303,7 @@ async function fetchRemoteCards(clientOpt) {
   const client = clientOpt ?? (await ensureClient());
   const { data, error } = await client
     .from('cards')
-    .select('id, word, translation, next_review, group_label')
+    .select('id, word, translation, next_review, group_label, srs_step')
     .order('next_review', { ascending: true });
   if (error) throw error;
   return (data || []).map(fromRow);
@@ -281,6 +319,7 @@ async function flushOutbox(userId, clientOpt) {
     try {
       if (item.op === 'insert') {
         const gl = normalizeGroupLabel(item.group_label ?? '');
+        const srs = clampSrsStep(item.srs_step ?? 0);
         const { error } = await client.from('cards').insert({
           id: item.id,
           user_id: userId,
@@ -288,13 +327,16 @@ async function flushOutbox(userId, clientOpt) {
           translation: item.translation,
           next_review: item.next_review,
           group_label: gl,
+          srs_step: srs,
         });
         if (error) throw error;
       } else if (item.op === 'update') {
+        const srs = clampSrsStep(item.srs_step ?? 0);
         const { error } = await client
           .from('cards')
           .update({
             next_review: item.next_review,
+            srs_step: srs,
             updated_at: new Date().toISOString(),
           })
           .eq('id', item.id);
@@ -352,6 +394,7 @@ async function migrateLegacyIfNeeded(userId, remote, clientOpt) {
     translation: c.translation,
     next_review: new Date(c.nextReview).toISOString(),
     group_label: normalizeGroupLabel(c.groupLabel),
+    srs_step: clampSrsStep(c.srsStep),
   }));
 
   const { error } = await client.from('cards').insert(rows);
@@ -440,6 +483,7 @@ export async function addCard(word, translation, groupLabel = '') {
     translation: t,
     nextReview: Date.now(),
     groupLabel: gl,
+    srsStep: 0,
   };
 
   const merged = mergeById(cards, [card]);
@@ -447,7 +491,7 @@ export async function addCard(word, translation, groupLabel = '') {
 
   if (!navigator.onLine) {
     const box = readOutbox();
-    box.push({ op: 'insert', id, word: w, translation: t, next_review, group_label: gl });
+    box.push({ op: 'insert', id, word: w, translation: t, next_review, group_label: gl, srs_step: 0 });
     writeOutbox(box);
     setSyncState('offline');
     return card;
@@ -462,6 +506,7 @@ export async function addCard(word, translation, groupLabel = '') {
       translation: t,
       next_review,
       group_label: gl,
+      srs_step: 0,
     });
     if (error) throw error;
     await refreshFromRemote();
@@ -469,24 +514,29 @@ export async function addCard(word, translation, groupLabel = '') {
   } catch (e) {
     console.error(e);
     const box = readOutbox();
-    box.push({ op: 'insert', id, word: w, translation: t, next_review, group_label: gl });
+    box.push({ op: 'insert', id, word: w, translation: t, next_review, group_label: gl, srs_step: 0 });
     writeOutbox(box);
     setSyncState('error');
     return card;
   }
 }
 
-export async function updateCardNextReview(cardId, nextReviewMs) {
-  const next_review = new Date(nextReviewMs).toISOString();
+/**
+ * @param {string} cardId
+ * @param {{ nextReviewMs: number, srsStep: number }} srs
+ */
+export async function updateCardSrs(cardId, srs) {
+  const next_review = new Date(srs.nextReviewMs).toISOString();
+  const srs_step = clampSrsStep(srs.srsStep);
   const idx = cards.findIndex((c) => c.id === cardId);
   if (idx === -1) return;
   const next = cards.slice();
-  next[idx] = { ...next[idx], nextReview: nextReviewMs };
+  next[idx] = { ...next[idx], nextReview: srs.nextReviewMs, srsStep: srs_step };
   setCards(next);
 
   if (!navigator.onLine) {
     const box = readOutbox();
-    box.push({ op: 'update', id: cardId, next_review });
+    box.push({ op: 'update', id: cardId, next_review, srs_step });
     writeOutbox(box);
     setSyncState('offline');
     return;
@@ -498,6 +548,7 @@ export async function updateCardNextReview(cardId, nextReviewMs) {
       .from('cards')
       .update({
         next_review,
+        srs_step,
         updated_at: new Date().toISOString(),
       })
       .eq('id', cardId);
@@ -506,7 +557,7 @@ export async function updateCardNextReview(cardId, nextReviewMs) {
   } catch (e) {
     console.error(e);
     const box = readOutbox();
-    box.push({ op: 'update', id: cardId, next_review });
+    box.push({ op: 'update', id: cardId, next_review, srs_step });
     writeOutbox(box);
     setSyncState('error');
   }

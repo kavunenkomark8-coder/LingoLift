@@ -2,30 +2,21 @@ import {
   initDataStore,
   getCards,
   addCard,
-  updateCardNextReview,
+  updateCardSrs,
   updateCardFields,
   deleteCard,
   getSyncState,
   getLastSyncedUserId,
   refreshFromRemote,
   forceFullSyncFromSupabase,
-  HARD_MS,
-  EASY_MS,
+  computeNextSrs,
 } from './data-store.js';
 import { applyUiStrings, t } from './i18n.js';
 
-const DAY_STATS_KEY = 'lingolift-day-stats';
 const LANG_PAIR_KEY = 'lingolift-lang-pair';
 const STUDY_GROUP_FILTER_KEY = 'lingolift-study-group-filter';
 /** Select value for cards with empty `groupLabel`. */
 const GROUP_FILTER_NONE = '__none__';
-
-/** @typedef {{ date: string, peakDue: number }} DayStats */
-
-function todayKey() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
 
 function endOfToday() {
   const d = new Date();
@@ -33,25 +24,7 @@ function endOfToday() {
   return d.getTime();
 }
 
-/** @returns {DayStats} */
-function getDayStats(currentDueCount) {
-  const key = todayKey();
-  let s = null;
-  try {
-    s = JSON.parse(localStorage.getItem(DAY_STATS_KEY) || 'null');
-  } catch {
-    s = null;
-  }
-  if (!s || s.date !== key || typeof s.peakDue !== 'number') {
-    s = { date: key, peakDue: currentDueCount };
-  } else {
-    s.peakDue = Math.max(s.peakDue, currentDueCount);
-  }
-  localStorage.setItem(DAY_STATS_KEY, JSON.stringify(s));
-  return s;
-}
-
-/** @param {{ id: string, word: string, translation: string, nextReview: number }[]} cards */
+/** @param {{ id: string, word: string, translation: string, nextReview: number, srsStep?: number }[]} cards */
 function dueTodayQueue(cards) {
   const end = endOfToday();
   const out = [];
@@ -319,7 +292,7 @@ function scheduleRenderDeckList() {
   }, 200);
 }
 
-/** @param {{ id: string, word: string, translation: string, nextReview: number, groupLabel?: string }[]} all */
+/** @param {{ id: string, word: string, translation: string, nextReview: number, groupLabel?: string, srsStep?: number }[]} all */
 function cardsMatchingDeckFilters(all) {
   let list = all.slice().sort((a, b) => a.word.localeCompare(b.word, undefined, { sensitivity: 'base' }));
   if (deckListGroupFilter === GROUP_FILTER_NONE) list = list.filter((c) => !(c.groupLabel || '').trim());
@@ -338,7 +311,7 @@ function closeAllDeckEdits() {
 
 /**
  * @param {HTMLDivElement} row
- * @param {{ id: string, word: string, translation: string, nextReview: number, groupLabel?: string }} card
+ * @param {{ id: string, word: string, translation: string, nextReview: number, groupLabel?: string, srsStep?: number }} card
  */
 function openDeckEdit(row, card) {
   closeAllDeckEdits();
@@ -478,7 +451,7 @@ function focusStartReview() {
 /** @type {ReturnType<typeof setTimeout> | null} */
 let footerSyncCheckTimer = null;
 
-/** @type {{ id: string, word: string, translation: string, nextReview: number, groupLabel?: string }[]} */
+/** @type {{ id: string, word: string, translation: string, nextReview: number, groupLabel?: string, srsStep?: number }[]} */
 let queue = [];
 let queueIndex = 0;
 let toastTimer = null;
@@ -611,25 +584,26 @@ function renderDashboard() {
   const allCards = getCards();
   const filtered = cardsMatchingStudyFilter(allCards);
   const due = dueTodayQueue(filtered);
-  const remaining = due.length;
+  const dueCount = due.length;
+  const poolTotal = filtered.length;
   const total = allCards.length;
-  const stats = getDayStats(remaining);
-  const peak = stats.peakDue;
-  const brainFill = peak ? Math.min(1, Math.max(0, remaining / peak)) : 0;
+  const brainFill = poolTotal ? Math.min(1, Math.max(0, dueCount / poolTotal)) : 0;
   els.dueBrainVisual?.style.setProperty('--brain-fill', String(brainFill));
+  if (dueCount === 0) els.dueBrainVisual?.classList.add('due-brain-visual--drained');
+  else els.dueBrainVisual?.classList.remove('due-brain-visual--drained');
 
   els.statTotal.textContent = String(total);
 
   els.progressCount.textContent =
-    peak === 0
-      ? t('progressZeroDue')
-      : t('progressLeftDue', { remaining, peak });
+    poolTotal === 0 ? t('progressZeroDue') : t('progressDueInPool', { due: dueCount, total: poolTotal });
 
-  if (remaining === 0) {
+  if (poolTotal === 0) {
     if (total === 0) els.reviewHint.textContent = t('reviewHintEmptyDeck');
-    else if (filtered.length === 0) els.reviewHint.textContent = t('reviewHintNoCardsInGroup');
-    else els.reviewHint.textContent = t('reviewHintNoneToday');
+    else els.reviewHint.textContent = t('reviewHintNoCardsInGroup');
     els.btnStartReview.disabled = true;
+  } else if (dueCount === 0) {
+    els.reviewHint.textContent = t('reviewHintFullPool');
+    els.btnStartReview.disabled = false;
   } else {
     els.reviewHint.textContent = '';
     els.btnStartReview.disabled = false;
@@ -644,7 +618,9 @@ function renderDashboard() {
     els.accountHint.textContent = '';
   }
 
-  renderDeckList();
+  if (els.deckPanel?.classList.contains('deck-panel--open')) {
+    renderDeckList();
+  }
   updateSyncLabel();
 }
 
@@ -754,11 +730,11 @@ function detachStudyKeyboard() {
 
 function startReview() {
   const filtered = cardsMatchingStudyFilter(getCards());
-  queue = dueTodayQueue(filtered);
-  if (queue.length === 0) {
+  if (filtered.length === 0) {
     showToast(t('toastNoCardsDue'));
     return;
   }
+  queue = filtered.slice();
   shuffleInPlace(queue);
   queueIndex = 0;
   setStudyChromeActive(true);
@@ -781,8 +757,8 @@ async function grade(hard) {
   const card = queue[queueIndex];
   if (!card) return;
   const now = Date.now();
-  const next = now + (hard ? HARD_MS : EASY_MS);
-  await updateCardNextReview(card.id, next);
+  const srs = computeNextSrs(hard, card.srsStep ?? 0, now);
+  await updateCardSrs(card.id, srs);
 
   queueIndex += 1;
   if (queueIndex >= queue.length) {
