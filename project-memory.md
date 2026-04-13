@@ -1,7 +1,13 @@
 # LingoLift — project memory (for AI context)
 
-**Document version:** 21.0 (sync UX, outbox diagnostics, deploy docs)  
-**App / Service Worker cache:** `lingolift-v51-sync-ux-docs` (`sw.js` → `CACHE = 'lingolift-v51-sync-ux-docs'`)
+**Document version:** 21.3 (Due now dashboard count)  
+**App / Service Worker cache:** `lingolift-v54-due-now-count` (`sw.js` → `CACHE = 'lingolift-v54-due-now-count'`)
+
+**v21.3:** Dashboard header **`dueToday`** string → **Due now**; count uses **`dueNowQueue`** (**`nextReview <= Date.now()`**) instead of end-of-calendar-day, so **Hard** (+15 min) lowers the visible ratio immediately. **`studyRemaining`** copy → **left in session**. **`reviewHintFullPool`** clarifies empty **Due now** vs **Repeat** full pool. **`index.html`** **`js/app.js?v=54-due-now-count`**. SW **`lingolift-v54-due-now-count`**.
+
+**v21.2:** Tracked **[`js/supabase-config.js`](js/supabase-config.js)** with placeholders (removed from **`.gitignore`** so clones and SW precache always resolve the module). **`ensureClient()`** throws a clear error if URL/key still contain **`YOUR_*`** placeholders. **`formatSyncErr`** includes PostgREST **`code`** and **`hint`** when present. **[`README.md`](README.md)** — **Troubleshooting cloud sync** table. **`index.html`** loads **`js/app.js?v=53-sync-diagnostics`**. SW **`lingolift-v53-sync-diagnostics`**.
+
+**v21.1:** Dashboard **`accountHint`** states explicitly **this device only** and how to match Supabase row counts (**`where user_id = …`**). **`index.html`** loads **`js/app.js?v=52-account-hint`** so updates are not masked by disk cache. **`registerSW()`** calls **`reg.update()`** after registration to pick up a new SW sooner. SW **`lingolift-v52-script-cache-bust`**.
 
 **v21.0:** **Sync expectations** documented (anonymous **per device** vs SQL row counts; dashboard account id vs **`user_id`**). **`flushOutbox`** failures set **`lastOutboxFlushError`** + **`console.error('[LingoLift] outbox', …)`**; **`getLastOutboxFlushError()`** exposed for tooltips (**`#sync-status`**, **`#account-hint`**). Stale **`setCards(remote)`** skip schedules **`scheduleDeferredRefreshMerge()`** (~1.4s deferred **`refreshFromRemote`**). **Cloud sync** shows **`toastSyncStaleRetrying`** when **`skippedStale`**, not the footer ✅ flash. Removed temporary **debug ingest** `fetch` blocks. Added **[`README.md`](README.md)** and **[`js/supabase-config.example.js`](js/supabase-config.example.js)**. How-to strings **`howtoLi3`** / **`howtoLi6`** updated. SW **`lingolift-v51-sync-ux-docs`**.
 
@@ -59,7 +65,7 @@
 
 ## Optimization Log (v14)
 
-- **`js/app.js`:** `dueTodayQueue` uses one **`endOfToday()`** read and a single pass + sort (no per-card `filter` callback); removed **`loadCards`** wrapper; **`parseGtxTranslation`** builds an array then **`join`**; cached DOM refs for how-to controls and add-card submit; **`void`** on fire-and-forget refresh.
+- **`js/app.js`:** `dueNowQueue` ( **`nextReview <= Date.now()`** ) for dashboard ratio; removed end-of-day-only count so **Hard** visibly updates the header. **`parseGtxTranslation`** builds an array then **`join`**; cached DOM refs for how-to controls and add-card submit; **`void`** on fire-and-forget refresh.
 - **`js/data-store.js`:** **`runRefreshPipeline`** uses **`const { client, userId } = await ensureSession()`** and passes **`client`** into **`flushOutbox`**, **`fetchRemoteCards`**, **`migrateLegacyIfNeeded`** to avoid redundant **`ensureClient()`**; **`migrateLegacyIfNeeded(userId, remote, client)`** reuses the first remote fetch and returns **`true`** only when legacy rows were inserted, then refetches once; **`addCard`** / **`updateCardSrs`** use **`client`** from **`ensureSession()`** only.
 - **`css/styles.css`:** Sync strip uses **`contain: layout`**, **`translateZ(0)`**, and opacity timing aligned with **`--sync-ease`** to reduce flicker; **`.flash-back-wrap`** uses **`translate3d`**, **`contain: content`**, **`backface-visibility: hidden`** for smoother compositing on mobile.
 - **`sw.js`:** Install uses **`Promise.allSettled`** per asset so one failed URL does not block the rest; **`self.skipWaiting()`** at start of **`install`**; cache name bumped with versions (e.g. **`lingolift-v33-deck-groups`** for shell assets); **`activate`** purges non-current caches.
@@ -86,7 +92,7 @@
 ## Spaced repetition
 
 - **Intervals** (`data-store.js`): **`HARD_DELAY_MS`** (**15 minutes**); **Easy** steps **`EASY_INTERVALS_MS`**: **2h → 6h → 24h → 72h → 1 week** (then **1 week** again). **`computeNextSrs(hard, srsStep)`** / **`updateCardSrs`**. Client field **`srsStep`** (0..4): index of the next Easy delay; Hard resets to **0**.
-- **Due today** (`app.js`): `nextReview` on or before end of local calendar day (`dueTodayQueue`). **v20.1:** **Repeat** shuffles and reviews the **entire filtered pool** (same group filter). Header count **`due / poolTotal`**; due-brain fill **`due / poolTotal`**. **v19:** filter is **Group for review** (all / ungrouped / one named group).
+- **Due now** (`app.js`): **`nextReview <= Date.now()`** (`dueNowQueue`). **v20.1:** **Repeat** shuffles and reviews the **entire filtered pool** (same group filter). Header count **`dueNow / poolTotal`**; due-brain fill same ratio. **v19:** filter is **Group for review** (all / ungrouped / one named group).
 
 ---
 

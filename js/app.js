@@ -20,18 +20,17 @@ const STUDY_GROUP_FILTER_KEY = 'lingolift-study-group-filter';
 /** Select value for cards with empty `groupLabel`. */
 const GROUP_FILTER_NONE = '__none__';
 
-function endOfToday() {
-  const d = new Date();
-  d.setHours(23, 59, 59, 999);
-  return d.getTime();
-}
-
-/** @param {{ id: string, word: string, translation: string, nextReview: number, srsStep?: number }[]} cards */
-function dueTodayQueue(cards) {
-  const end = endOfToday();
+/**
+ * Cards whose next review time is already here (strictly overdue / due now).
+ * Hard (+15 min) removes a card from this set until that time passes — unlike
+ * an end-of-day count, which stayed flat and looked like progress was not saved.
+ * @param {{ id: string, word: string, translation: string, nextReview: number, srsStep?: number }[]} cards
+ */
+function dueNowQueue(cards) {
+  const now = Date.now();
   const out = [];
   for (const c of cards) {
-    if (c.nextReview <= end) out.push(c);
+    if (c.nextReview <= now) out.push(c);
   }
   return out;
 }
@@ -591,7 +590,7 @@ function renderDashboard() {
 
   const allCards = getCards();
   const filtered = cardsMatchingStudyFilter(allCards);
-  const due = dueTodayQueue(filtered);
+  const due = dueNowQueue(filtered);
   const dueCount = due.length;
   const poolTotal = filtered.length;
   const total = allCards.length;
@@ -1006,11 +1005,15 @@ els.syncStatus.addEventListener('keydown', (e) => {
 });
 
 function registerSW() {
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js').catch((err) => {
+  if (!('serviceWorker' in navigator)) return;
+  navigator.serviceWorker
+    .register('./sw.js')
+    .then((reg) => {
+      void reg.update();
+    })
+    .catch((err) => {
       console.error('[SW] Registration failed:', err);
     });
-  }
 }
 
 applyUiStrings();

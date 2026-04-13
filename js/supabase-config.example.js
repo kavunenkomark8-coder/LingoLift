@@ -1,7 +1,7 @@
 /**
  * Example Supabase client credentials.
  *
- * 1. Copy this file to `supabase-config.js` in the same folder.
+ * 1. Edit `supabase-config.js` in this folder (tracked placeholder) or copy this file over it.
  * 2. In Supabase Dashboard → Project Settings → API, copy Project URL and anon public key.
  * 3. Enable Authentication → Providers → Anonymous sign-ins before using the app.
  *

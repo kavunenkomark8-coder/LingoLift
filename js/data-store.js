@@ -129,17 +129,33 @@ export function getLastOutboxFlushError() {
   return lastOutboxFlushError;
 }
 
-/** @param {unknown} e */
+/**
+ * Supabase PostgREST / AuthError objects often expose `code` and `hint`.
+ * @param {unknown} e
+ */
 function formatSyncErr(e) {
   if (e == null) return 'Unknown error';
   if (typeof e === 'object' && e !== null && 'message' in e) {
-    const o = /** @type {{ message?: unknown; details?: unknown }} */ (e);
+    const o = /** @type {{ message?: unknown; details?: unknown; code?: unknown; hint?: unknown }} */ (e);
     const m = String(o.message || '');
     const details = o.details != null ? String(o.details) : '';
-    const combined = details ? `${m} (${details})` : m;
-    return combined.slice(0, 220);
+    const code = o.code != null ? String(o.code) : '';
+    const hint = o.hint != null ? String(o.hint) : '';
+    const parts = [code ? `[${code}]` : '', m, details ? `(${details})` : '', hint ? `hint: ${hint}` : ''].filter(
+      Boolean
+    );
+    const combined = parts.join(' ').replace(/\s+/g, ' ').trim();
+    return (combined || m || 'Unknown error').slice(0, 280);
   }
-  return String(e).slice(0, 220);
+  return String(e).slice(0, 280);
+}
+
+function isPlaceholderSupabaseConfig() {
+  const u = String(SUPABASE_URL || '').trim();
+  const k = String(SUPABASE_ANON_KEY || '').trim();
+  if (!u || !k) return true;
+  if (u.includes('YOUR_PROJECT_REF') || k.includes('YOUR_SUPABASE_ANON_KEY')) return true;
+  return false;
 }
 
 /** Richest-first `select` strings for old Supabase schemas missing optional columns. */
@@ -354,6 +370,11 @@ export function isWordDuplicateInGroup(word, groupLabel, excludeId = null) {
 
 async function ensureClient() {
   if (!supabase) {
+    if (isPlaceholderSupabaseConfig()) {
+      throw new Error(
+        'Supabase is not configured: edit js/supabase-config.js with your Project URL and anon key (see README).'
+      );
+    }
     supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: {
         persistSession: true,

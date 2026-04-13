@@ -1,4 +1,4 @@
-const CACHE = 'lingolift-v51-sync-ux-docs';
+const CACHE = 'lingolift-v54-due-now-count';
 
 const ASSETS = [
   './',
