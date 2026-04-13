@@ -1,7 +1,13 @@
 # LingoLift — project memory (for AI context)
 
-**Document version:** 20.1 (Repeat = full filtered pool)  
-**App / Service Worker cache:** `lingolift-v40-full-pool-queue` (`sw.js` → `CACHE = 'lingolift-v40-full-pool-queue'`)
+**Document version:** 20.4 (Sync error detail in UI)  
+**App / Service Worker cache:** `lingolift-v43-sync-error-detail` (`sw.js` → `CACHE = 'lingolift-v43-sync-error-detail'`)
+
+**v20.4:** **`getLastSyncError`** / **`lastSyncError`** in **`js/data-store.js`**; failed refresh returns **`detail`**; footer **Cloud sync** toast shows **`toastSyncFailedReason`**; **`#sync-status`** **`title`** tooltip when sync is error. SW **`lingolift-v43-sync-error-detail`**.
+
+**v20.3:** Removed temporary **debug ingest** `fetch` logging from **`runRefreshPipeline`** / **`fetchRemoteCards`**. SW **`lingolift-v42-no-debug-ingest`**.
+
+**v20.2:** If Supabase has **no `srs_step` column** (migration not run), **`js/data-store.js`** retries **fetch / insert / update / outbox / legacy migrate** without that field and keeps **`srsStep` client-only** for the tab session. Avoids permanent **Sync error** until SQL is applied. SW **`lingolift-v41-srs-sync-fallback`**.
 
 **v20.1:** **Repeat** queues **all** cards matching **Group for review** (not only due-by-midnight). Dashboard **Due today** count shows **`dueToday / poolTotal`** (`progressDueInPool`); **due-brain** fill uses the same ratio (equals **1** when every card in the pool is due today). Removed **`lingolift-day-stats`** / **`getDayStats`**. Stylesheet **`?v=40-full-pool-queue`**.
 

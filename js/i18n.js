@@ -74,6 +74,7 @@ export const strings = {
   footerSyncCompleteAria: 'Sync complete',
   toastOfflineCloud: 'Offline.',
   toastSyncFailed: 'Sync failed.',
+  toastSyncFailedReason: 'Sync failed: {reason}',
   ariaDashboard: 'Dashboard',
   ariaStudy: 'Study',
   translateWandTooltip: 'Auto-translate',

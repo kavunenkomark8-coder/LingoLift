@@ -84,6 +84,47 @@ let lastSyncedUserId = null;
 /** @type {Promise<{ ok: boolean, count?: number, userId?: string, reason?: string }> | null} */
 let refreshInFlight = null;
 
+/** Set false after PostgREST reports missing `srs_step` (DB without migration). Session-only. */
+let dbSupportsSrsStepColumn = true;
+
+/** Last cloud sync failure (cleared on success); for UI / support. */
+let lastSyncError = '';
+
+/** @returns {string} */
+export function getLastSyncError() {
+  return lastSyncError;
+}
+
+/** @param {unknown} e */
+function formatSyncErr(e) {
+  if (e == null) return 'Unknown error';
+  if (typeof e === 'object' && e !== null && 'message' in e) {
+    const o = /** @type {{ message?: unknown; details?: unknown }} */ (e);
+    const m = String(o.message || '');
+    const details = o.details != null ? String(o.details) : '';
+    const combined = details ? `${m} (${details})` : m;
+    return combined.slice(0, 220);
+  }
+  return String(e).slice(0, 220);
+}
+
+const SELECT_CARDS_WITH_SRS =
+  'id, word, translation, next_review, group_label, srs_step';
+const SELECT_CARDS_LEGACY = 'id, word, translation, next_review, group_label';
+
+/** @param {unknown} err */
+function isMissingSrsStepDbError(err) {
+  if (!err || typeof err !== 'object') return false;
+  const e = /** @type {{ message?: string; details?: string; hint?: string; code?: string }} */ (err);
+  const blob = `${e.message || ''} ${e.details || ''} ${e.hint || ''} ${e.code || ''}`;
+  if (!/srs_step/i.test(blob)) return false;
+  return /does not exist|schema cache|not exist|42703|undefined column|PGRST204|PGRST/i.test(blob);
+}
+
+function markDbSrsColumnUnsupported() {
+  dbSupportsSrsStepColumn = false;
+}
+
 function setSyncState(s) {
   if (syncState === s) return;
   syncState = s;
@@ -301,10 +342,15 @@ export async function getSupabaseContext() {
 
 async function fetchRemoteCards(clientOpt) {
   const client = clientOpt ?? (await ensureClient());
-  const { data, error } = await client
-    .from('cards')
-    .select('id, word, translation, next_review, group_label, srs_step')
-    .order('next_review', { ascending: true });
+  const cols = dbSupportsSrsStepColumn ? SELECT_CARDS_WITH_SRS : SELECT_CARDS_LEGACY;
+  let { data, error } = await client.from('cards').select(cols).order('next_review', { ascending: true });
+  if (error && dbSupportsSrsStepColumn && isMissingSrsStepDbError(error)) {
+    markDbSrsColumnUnsupported();
+    ({ data, error } = await client
+      .from('cards')
+      .select(SELECT_CARDS_LEGACY)
+      .order('next_review', { ascending: true }));
+  }
   if (error) throw error;
   return (data || []).map(fromRow);
 }
@@ -320,26 +366,41 @@ async function flushOutbox(userId, clientOpt) {
       if (item.op === 'insert') {
         const gl = normalizeGroupLabel(item.group_label ?? '');
         const srs = clampSrsStep(item.srs_step ?? 0);
-        const { error } = await client.from('cards').insert({
+        const baseRow = {
           id: item.id,
           user_id: userId,
           word: item.word,
           translation: item.translation,
           next_review: item.next_review,
           group_label: gl,
-          srs_step: srs,
-        });
+        };
+        let { error } = await client.from('cards').insert(
+          dbSupportsSrsStepColumn ? { ...baseRow, srs_step: srs } : baseRow
+        );
+        if (error && dbSupportsSrsStepColumn && isMissingSrsStepDbError(error)) {
+          markDbSrsColumnUnsupported();
+          ({ error } = await client.from('cards').insert(baseRow));
+        }
         if (error) throw error;
       } else if (item.op === 'update') {
         const srs = clampSrsStep(item.srs_step ?? 0);
-        const { error } = await client
+        const withSrs = {
+          next_review: item.next_review,
+          srs_step: srs,
+          updated_at: new Date().toISOString(),
+        };
+        const legacyUp = {
+          next_review: item.next_review,
+          updated_at: new Date().toISOString(),
+        };
+        let { error } = await client
           .from('cards')
-          .update({
-            next_review: item.next_review,
-            srs_step: srs,
-            updated_at: new Date().toISOString(),
-          })
+          .update(dbSupportsSrsStepColumn ? withSrs : legacyUp)
           .eq('id', item.id);
+        if (error && dbSupportsSrsStepColumn && isMissingSrsStepDbError(error)) {
+          markDbSrsColumnUnsupported();
+          ({ error } = await client.from('cards').update(legacyUp).eq('id', item.id));
+        }
         if (error) throw error;
       } else if (item.op === 'update_fields') {
         const gl = normalizeGroupLabel(item.group_label);
@@ -397,7 +458,12 @@ async function migrateLegacyIfNeeded(userId, remote, clientOpt) {
     srs_step: clampSrsStep(c.srsStep),
   }));
 
-  const { error } = await client.from('cards').insert(rows);
+  let { error } = await client.from('cards').insert(rows);
+  if (error && dbSupportsSrsStepColumn && isMissingSrsStepDbError(error)) {
+    markDbSrsColumnUnsupported();
+    const slim = rows.map(({ srs_step, ...r }) => r);
+    ({ error } = await client.from('cards').insert(slim));
+  }
   if (!error) {
     localStorage.removeItem(LEGACY_KEY);
     return true;
@@ -415,12 +481,14 @@ async function runRefreshPipeline() {
     const migrated = await migrateLegacyIfNeeded(userId, remote, client);
     if (migrated) remote = await fetchRemoteCards(client);
     setCards(remote);
+    lastSyncError = '';
     setSyncState('idle');
     return { ok: true, count: remote.length, userId };
   } catch (e) {
     console.error(e);
+    lastSyncError = formatSyncErr(e);
     setSyncState('error');
-    return { ok: false, reason: 'error' };
+    return { ok: false, reason: 'error', detail: lastSyncError };
   }
 }
 
@@ -499,15 +567,21 @@ export async function addCard(word, translation, groupLabel = '') {
 
   try {
     const { client, userId } = await ensureSession();
-    const { error } = await client.from('cards').insert({
+    const baseIns = {
       id,
       user_id: userId,
       word: w,
       translation: t,
       next_review,
       group_label: gl,
-      srs_step: 0,
-    });
+    };
+    let { error } = await client.from('cards').insert(
+      dbSupportsSrsStepColumn ? { ...baseIns, srs_step: 0 } : baseIns
+    );
+    if (error && dbSupportsSrsStepColumn && isMissingSrsStepDbError(error)) {
+      markDbSrsColumnUnsupported();
+      ({ error } = await client.from('cards').insert(baseIns));
+    }
     if (error) throw error;
     await refreshFromRemote();
     return card;
@@ -544,14 +618,23 @@ export async function updateCardSrs(cardId, srs) {
 
   try {
     const { client } = await ensureSession();
-    const { error } = await client
+    const withSrs = {
+      next_review,
+      srs_step,
+      updated_at: new Date().toISOString(),
+    };
+    const legacyUp = {
+      next_review,
+      updated_at: new Date().toISOString(),
+    };
+    let { error } = await client
       .from('cards')
-      .update({
-        next_review,
-        srs_step,
-        updated_at: new Date().toISOString(),
-      })
+      .update(dbSupportsSrsStepColumn ? withSrs : legacyUp)
       .eq('id', cardId);
+    if (error && dbSupportsSrsStepColumn && isMissingSrsStepDbError(error)) {
+      markDbSrsColumnUnsupported();
+      ({ error } = await client.from('cards').update(legacyUp).eq('id', cardId));
+    }
     if (error) throw error;
     await refreshFromRemote();
   } catch (e) {

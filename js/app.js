@@ -7,6 +7,7 @@ import {
   deleteCard,
   getSyncState,
   getLastSyncedUserId,
+  getLastSyncError,
   refreshFromRemote,
   forceFullSyncFromSupabase,
   computeNextSrs,
@@ -559,6 +560,9 @@ function updateSyncLabel() {
     els.syncDynamicRow?.classList.add('sync-dynamic-row--visible');
   } else if (s === 'error') {
     els.syncStatus.textContent = t('syncError');
+    const errHint = getLastSyncError();
+    if (errHint) els.syncStatus.setAttribute('title', errHint);
+    else els.syncStatus.removeAttribute('title');
     els.syncStatus.classList.add('sync-status--action');
     els.syncStatus.setAttribute('role', 'button');
     els.syncStatus.setAttribute('tabindex', '0');
@@ -566,6 +570,7 @@ function updateSyncLabel() {
     els.syncDynamicRow?.classList.add('sync-dynamic-row--visible');
   } else {
     els.syncStatus.textContent = '';
+    els.syncStatus.removeAttribute('title');
     els.syncStatus.removeAttribute('role');
     els.syncStatus.removeAttribute('tabindex');
   }
@@ -937,6 +942,7 @@ els.btnForceSync.addEventListener('click', async () => {
         footerSyncCheckTimer = null;
       }, 1500);
     } else if (r.reason === 'offline') showToast(t('toastOfflineCloud'));
+    else if (r.detail) showToast(t('toastSyncFailedReason', { reason: r.detail }));
     else showToast(t('toastSyncFailed'));
   } finally {
     els.btnForceSync.disabled = false;

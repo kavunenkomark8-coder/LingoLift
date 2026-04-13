@@ -1,9 +1,9 @@
-const CACHE = 'lingolift-v40-full-pool-queue';
+const CACHE = 'lingolift-v43-sync-error-detail';
 
 const ASSETS = [
   './',
   './index.html',
-  './css/styles.css?v=40-full-pool-queue',
+  './css/styles.css?v=41-srs-sync-fallback',
   './js/app.js',
   './js/i18n.js',
   './js/data-store.js',
