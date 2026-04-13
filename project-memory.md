@@ -1,7 +1,9 @@
 # LingoLift — project memory (for AI context)
 
-**Document version:** 21.7 (`__LINGOLIFT_SUPABASE__` + fallbacks)  
-**App / Service Worker cache:** `lingolift-v58-supabase-override` (`sw.js` → `CACHE = 'lingolift-v58-supabase-override'`)
+**Document version:** 21.8 (Supabase pick: global cannot override with YOUR_*)  
+**App / Service Worker cache:** `lingolift-v59-supabase-pick` (`sw.js` → `CACHE = 'lingolift-v59-supabase-pick'`)
+
+**v21.8:** **[`js/supabase-config.js`](js/supabase-config.js)** picks **`url`** / **`anonKey`** from **`__LINGOLIFT_SUPABASE__`** only when that value is **not** a **`YOUR_*`** placeholder; otherwise uses **`FALLBACK_*`** (avoids example globals wiping real defaults). **`index.html`** **`app.js?v=59-supabase-pick`**. SW **`lingolift-v59-supabase-pick`**.
 
 **v21.7:** **[`js/supabase-config.js`](js/supabase-config.js)** resolves **`SUPABASE_URL`** / **`SUPABASE_ANON_KEY`** from **`globalThis.__LINGOLIFT_SUPABASE__`** (`url`, `anonKey`) when set before modules load, else **`FALLBACK_*`** in file. README documents static hosting. **`ensureClient`** error text mentions override. **`index.html`** **`app.js?v=58-supabase-override`**. SW **`lingolift-v58-supabase-override`**.
 

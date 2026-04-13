@@ -1,4 +1,4 @@
-const CACHE = 'lingolift-v58-supabase-override';
+const CACHE = 'lingolift-v59-supabase-pick';
 
 const ASSETS = [
   './',
