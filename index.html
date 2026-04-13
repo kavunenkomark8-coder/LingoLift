@@ -53,6 +53,8 @@
             <li data-i18n-html="howtoLi5"></li>
             <li data-i18n-html="howtoLi6"></li>
             <li data-i18n-html="howtoLi7" class="howto-li--desktop"></li>
+            <li data-i18n-html="howtoLi8"></li>
+            <li data-i18n-html="howtoLi9" class="howto-li--mobile-swipe"></li>
           </ul>
         </div>
       </div>
@@ -104,6 +106,10 @@
               />
             </svg>
           </div>
+          <label class="study-group-filter">
+            <span class="study-group-filter__label field-label field-label--single-line" data-i18n="fieldStudyGroup">Group for review</span>
+            <select id="select-study-group" class="select-lang study-group-filter__select" aria-label="Filter due cards by group"></select>
+          </label>
           <div class="review-card__cta">
             <button type="button" class="btn btn--primary btn--large btn-text-nowrap btn-repeat-primary" id="btn-start-review" data-i18n="startReview">
               Repeat
@@ -137,6 +143,22 @@
                 </select>
               </label>
             </div>
+            <div class="group-add-row">
+              <label class="field field--group-select">
+                <span class="field-label field-label--single-line" data-i18n="fieldCardGroup">Group</span>
+                <select id="select-add-group" class="select-lang" aria-label="Save card in group"></select>
+              </label>
+              <label class="field field--new-group" id="label-new-group" aria-hidden="true">
+                <span class="field-label field-label--single-line" data-i18n="fieldNewGroupName">New group name</span>
+                <input
+                  type="text"
+                  id="input-new-group-name"
+                  autocomplete="off"
+                  data-i18n-placeholder="placeholderNewGroup"
+                  placeholder="e.g. Travel"
+                />
+              </label>
+            </div>
             <label class="field">
               <span class="field-label field-label--single-line" data-i18n="fieldWord">Word</span>
               <div class="field-word-wrap" id="field-word-wrap">
@@ -144,6 +166,7 @@
                   type="text"
                   id="input-word"
                   name="word"
+                  list="datalist-words"
                   autocomplete="off"
                   data-i18n-placeholder="placeholderWord"
                   placeholder="e.g. casa"
@@ -166,6 +189,28 @@
           <p class="stats-line stats-line--single-line"><span id="stat-total">0</span> <span data-i18n="statsDeckSuffix">cards in deck</span></p>
           <p id="account-hint" class="stats-line stats-line--sub" hidden></p>
         </div>
+
+        <div class="panel deck-panel" id="deck-panel">
+          <button type="button" class="deck-panel__summary" id="deck-toggle" aria-expanded="false" aria-controls="deck-content" data-i18n="deckPanelTitle">
+            My deck
+          </button>
+          <div id="deck-content" class="deck-panel__expand" role="region" aria-labelledby="deck-toggle" aria-hidden="true">
+            <div class="deck-panel__inner">
+              <div class="deck-toolbar">
+                <input
+                  type="search"
+                  id="deck-search"
+                  class="deck-search-input"
+                  data-i18n-placeholder="deckSearchPlaceholder"
+                  autocomplete="off"
+                  aria-label="Search deck"
+                />
+                <select id="select-deck-group-filter" class="select-lang deck-filter-select" aria-label="Filter deck list by group"></select>
+              </div>
+              <div id="deck-list" class="deck-list"></div>
+            </div>
+          </div>
+        </div>
         </div>
       </section>
 
@@ -182,7 +227,7 @@
         </div>
 
         <div class="study-card-wrap">
-          <div id="study-card" class="flash-card">
+          <div id="study-card" class="flash-card flash-card--swipeable" tabindex="-1">
             <p id="study-front" class="flash-front"></p>
             <div id="study-back-wrap" class="flash-back-wrap flash-back-wrap--closed" aria-hidden="true">
               <p class="flash-divider" aria-hidden="true"></p>
@@ -214,6 +259,7 @@
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
     <p id="study-keys-hint" class="visually-hidden" data-i18n="studyDesktopKeysHint"></p>
   </div>
+  <datalist id="datalist-words"></datalist>
   <script src="js/app.js" type="module"></script>
 </body>
 </html>

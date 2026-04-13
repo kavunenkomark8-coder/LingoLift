@@ -5,8 +5,30 @@ const CACHE_KEY = 'lingolift-cards-cache';
 const OUTBOX_KEY = 'lingolift-sync-outbox';
 const LEGACY_KEY = 'lingolift-cards';
 
-/** @typedef {{ id: string, word: string, translation: string, nextReview: number }} Card */
-/** @typedef {{ op: 'insert', id: string, word: string, translation: string, next_review: string } | { op: 'update', id: string, next_review: string }} OutboxItem */
+/** @typedef {{ id: string, word: string, translation: string, nextReview: number, groupLabel: string }} Card */
+/**
+ * @typedef {{
+ *   op: 'insert',
+ *   id: string,
+ *   word: string,
+ *   translation: string,
+ *   next_review: string,
+ *   group_label?: string,
+ * } | {
+ *   op: 'update',
+ *   id: string,
+ *   next_review: string,
+ * } | {
+ *   op: 'update_fields',
+ *   id: string,
+ *   word: string,
+ *   translation: string,
+ *   group_label: string,
+ * } | {
+ *   op: 'delete',
+ *   id: string,
+ * }} OutboxItem
+ */
 
 const HARD_MS = 6 * 60 * 60 * 1000;
 const EASY_MS = 3 * 24 * 60 * 60 * 1000;
@@ -45,13 +67,19 @@ export function getLastSyncedUserId() {
   return lastSyncedUserId;
 }
 
+/** @param {unknown} g */
+function normalizeGroupLabel(g) {
+  if (g == null || typeof g !== 'string') return '';
+  return g.trim();
+}
+
 function readCache() {
   try {
     const raw = localStorage.getItem(CACHE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter(validCard);
+    return parsed.filter(validCard).map(normalizeCardGroup);
   } catch {
     return [];
   }
@@ -66,7 +94,7 @@ function readOutbox() {
     const raw = localStorage.getItem(OUTBOX_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    return Array.isArray(parsed) ? parsed.filter(validOutboxItem) : [];
   } catch {
     return [];
   }
@@ -77,25 +105,66 @@ function writeOutbox(items) {
   else localStorage.setItem(OUTBOX_KEY, JSON.stringify(items));
 }
 
+/** @param {unknown} item */
+function validOutboxItem(item) {
+  if (!item || typeof item !== 'object' || !('op' in item)) return false;
+  const op = /** @type {{ op: string }} */ (item).op;
+  if (op === 'insert') {
+    const o = /** @type {Record<string, unknown>} */ (item);
+    return (
+      typeof o.id === 'string' &&
+      typeof o.word === 'string' &&
+      typeof o.translation === 'string' &&
+      typeof o.next_review === 'string'
+    );
+  }
+  if (op === 'update') {
+    const o = /** @type {Record<string, unknown>} */ (item);
+    return typeof o.id === 'string' && typeof o.next_review === 'string';
+  }
+  if (op === 'update_fields') {
+    const o = /** @type {Record<string, unknown>} */ (item);
+    return (
+      typeof o.id === 'string' &&
+      typeof o.word === 'string' &&
+      typeof o.translation === 'string' &&
+      typeof o.group_label === 'string'
+    );
+  }
+  if (op === 'delete') {
+    return typeof /** @type {Record<string, unknown>} */ (item).id === 'string';
+  }
+  return false;
+}
+
 function validCard(c) {
   return (
     c &&
-    typeof c.id === 'string' &&
-    typeof c.word === 'string' &&
-    typeof c.translation === 'string' &&
-    typeof c.nextReview === 'number'
+    typeof c === 'object' &&
+    typeof /** @type {Card} */ (c).id === 'string' &&
+    typeof /** @type {Card} */ (c).word === 'string' &&
+    typeof /** @type {Card} */ (c).translation === 'string' &&
+    typeof /** @type {Card} */ (c).nextReview === 'number'
   );
+}
+
+/** @param {Card} c */
+function normalizeCardGroup(c) {
+  const gl = 'groupLabel' in c && typeof c.groupLabel === 'string' ? c.groupLabel.trim() : '';
+  return { ...c, groupLabel: gl };
 }
 
 /** @param {Record<string, unknown>} row */
 function fromRow(row) {
   const t = row.next_review;
   const ms = typeof t === 'string' ? new Date(t).getTime() : Number(t);
+  const gl = row.group_label != null ? String(row.group_label).trim() : '';
   return {
     id: String(row.id),
     word: String(row.word),
     translation: String(row.translation),
     nextReview: ms,
+    groupLabel: gl,
   };
 }
 
@@ -108,7 +177,7 @@ function mergeById(a, b) {
 
 /** @param {Card[]} next */
 function setCards(next) {
-  cards = next.filter(validCard).sort((x, y) => x.nextReview - y.nextReview);
+  cards = next.filter(validCard).map(normalizeCardGroup).sort((x, y) => x.nextReview - y.nextReview);
   writeCache(cards);
   notify?.();
 }
@@ -117,11 +186,23 @@ export function getCards() {
   return cards;
 }
 
-/** Case-insensitive match on trimmed word (Portuguese-friendly locale). */
-export function isWordAlreadyInDeck(word) {
-  const key = word.trim().toLocaleLowerCase('pt');
-  if (!key) return false;
-  return getCards().some((c) => c.word.trim().toLocaleLowerCase('pt') === key);
+function normWordKey(word) {
+  return word.trim().toLocaleLowerCase('pt');
+}
+
+/**
+ * Same word may exist in different groups; optional excludeId for edits.
+ * @param {string} word
+ * @param {string} groupLabel
+ * @param {string | null} [excludeId]
+ */
+export function isWordDuplicateInGroup(word, groupLabel, excludeId = null) {
+  const w = normWordKey(word);
+  if (!w) return false;
+  const g = normalizeGroupLabel(groupLabel);
+  return getCards().some(
+    (c) => c.id !== excludeId && normWordKey(c.word) === w && normalizeGroupLabel(c.groupLabel) === g
+  );
 }
 
 async function ensureClient() {
@@ -184,7 +265,7 @@ async function fetchRemoteCards(clientOpt) {
   const client = clientOpt ?? (await ensureClient());
   const { data, error } = await client
     .from('cards')
-    .select('id, word, translation, next_review')
+    .select('id, word, translation, next_review, group_label')
     .order('next_review', { ascending: true });
   if (error) throw error;
   return (data || []).map(fromRow);
@@ -199,12 +280,14 @@ async function flushOutbox(userId, clientOpt) {
   for (const item of box) {
     try {
       if (item.op === 'insert') {
+        const gl = normalizeGroupLabel(item.group_label ?? '');
         const { error } = await client.from('cards').insert({
           id: item.id,
           user_id: userId,
           word: item.word,
           translation: item.translation,
           next_review: item.next_review,
+          group_label: gl,
         });
         if (error) throw error;
       } else if (item.op === 'update') {
@@ -215,6 +298,21 @@ async function flushOutbox(userId, clientOpt) {
             updated_at: new Date().toISOString(),
           })
           .eq('id', item.id);
+        if (error) throw error;
+      } else if (item.op === 'update_fields') {
+        const gl = normalizeGroupLabel(item.group_label);
+        const { error } = await client
+          .from('cards')
+          .update({
+            word: item.word,
+            translation: item.translation,
+            group_label: gl,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', item.id);
+        if (error) throw error;
+      } else if (item.op === 'delete') {
+        const { error } = await client.from('cards').delete().eq('id', item.id);
         if (error) throw error;
       }
     } catch {
@@ -235,7 +333,7 @@ async function migrateLegacyIfNeeded(userId, remote, clientOpt) {
     if (!raw) return false;
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return false;
-    legacy = parsed.filter(validCard);
+    legacy = parsed.filter(validCard).map(normalizeCardGroup);
   } catch {
     return false;
   }
@@ -253,6 +351,7 @@ async function migrateLegacyIfNeeded(userId, remote, clientOpt) {
     word: c.word,
     translation: c.translation,
     next_review: new Date(c.nextReview).toISOString(),
+    group_label: normalizeGroupLabel(c.groupLabel),
   }));
 
   const { error } = await client.from('cards').insert(rows);
@@ -321,11 +420,17 @@ export async function initDataStore(opts) {
   await refreshFromRemote();
 }
 
-/** @returns {Promise<Card | null>} null if duplicate word (case-insensitive). */
-export async function addCard(word, translation) {
+/**
+ * @param {string} word
+ * @param {string} translation
+ * @param {string} [groupLabel]
+ * @returns {Promise<Card | null>} null if duplicate word in the same group
+ */
+export async function addCard(word, translation, groupLabel = '') {
   const w = word.trim();
   const t = translation.trim();
-  if (isWordAlreadyInDeck(w)) return null;
+  const gl = normalizeGroupLabel(groupLabel);
+  if (isWordDuplicateInGroup(w, gl)) return null;
 
   const id = crypto.randomUUID();
   const next_review = new Date().toISOString();
@@ -334,6 +439,7 @@ export async function addCard(word, translation) {
     word: w,
     translation: t,
     nextReview: Date.now(),
+    groupLabel: gl,
   };
 
   const merged = mergeById(cards, [card]);
@@ -341,7 +447,7 @@ export async function addCard(word, translation) {
 
   if (!navigator.onLine) {
     const box = readOutbox();
-    box.push({ op: 'insert', id, word: w, translation: t, next_review });
+    box.push({ op: 'insert', id, word: w, translation: t, next_review, group_label: gl });
     writeOutbox(box);
     setSyncState('offline');
     return card;
@@ -355,6 +461,7 @@ export async function addCard(word, translation) {
       word: w,
       translation: t,
       next_review,
+      group_label: gl,
     });
     if (error) throw error;
     await refreshFromRemote();
@@ -362,7 +469,7 @@ export async function addCard(word, translation) {
   } catch (e) {
     console.error(e);
     const box = readOutbox();
-    box.push({ op: 'insert', id, word: w, translation: t, next_review });
+    box.push({ op: 'insert', id, word: w, translation: t, next_review, group_label: gl });
     writeOutbox(box);
     setSyncState('error');
     return card;
@@ -400,6 +507,81 @@ export async function updateCardNextReview(cardId, nextReviewMs) {
     console.error(e);
     const box = readOutbox();
     box.push({ op: 'update', id: cardId, next_review });
+    writeOutbox(box);
+    setSyncState('error');
+  }
+}
+
+/**
+ * @param {string} cardId
+ * @param {{ word: string, translation: string, groupLabel: string }} fields
+ * @returns {Promise<boolean>} false if duplicate word in target group
+ */
+export async function updateCardFields(cardId, fields) {
+  const w = fields.word.trim();
+  const tr = fields.translation.trim();
+  const gl = normalizeGroupLabel(fields.groupLabel);
+  if (isWordDuplicateInGroup(w, gl, cardId)) return false;
+
+  const idx = cards.findIndex((c) => c.id === cardId);
+  if (idx === -1) return false;
+  const next = cards.slice();
+  next[idx] = { ...next[idx], word: w, translation: tr, groupLabel: gl };
+  setCards(next);
+
+  if (!navigator.onLine) {
+    const box = readOutbox();
+    box.push({ op: 'update_fields', id: cardId, word: w, translation: tr, group_label: gl });
+    writeOutbox(box);
+    setSyncState('offline');
+    return true;
+  }
+
+  try {
+    const { client } = await ensureSession();
+    const { error } = await client
+      .from('cards')
+      .update({
+        word: w,
+        translation: tr,
+        group_label: gl,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', cardId);
+    if (error) throw error;
+    await refreshFromRemote();
+    return true;
+  } catch (e) {
+    console.error(e);
+    const box = readOutbox();
+    box.push({ op: 'update_fields', id: cardId, word: w, translation: tr, group_label: gl });
+    writeOutbox(box);
+    setSyncState('error');
+    return true;
+  }
+}
+
+export async function deleteCard(cardId) {
+  const next = cards.filter((c) => c.id !== cardId);
+  setCards(next);
+
+  if (!navigator.onLine) {
+    const box = readOutbox();
+    box.push({ op: 'delete', id: cardId });
+    writeOutbox(box);
+    setSyncState('offline');
+    return;
+  }
+
+  try {
+    const { client } = await ensureSession();
+    const { error } = await client.from('cards').delete().eq('id', cardId);
+    if (error) throw error;
+    await refreshFromRemote();
+  } catch (e) {
+    console.error(e);
+    const box = readOutbox();
+    box.push({ op: 'delete', id: cardId });
     writeOutbox(box);
     setSyncState('error');
   }

@@ -1,4 +1,4 @@
-const CACHE = 'lingolift-v32-stats-padding';
+const CACHE = 'lingolift-v34-smooth-disclosures';
 
 const ASSETS = [
   './',

@@ -3,6 +3,8 @@ import {
   getCards,
   addCard,
   updateCardNextReview,
+  updateCardFields,
+  deleteCard,
   getSyncState,
   getLastSyncedUserId,
   refreshFromRemote,
@@ -13,6 +15,10 @@ import {
 import { applyUiStrings, t } from './i18n.js';
 
 const DAY_STATS_KEY = 'lingolift-day-stats';
+const LANG_PAIR_KEY = 'lingolift-lang-pair';
+const STUDY_GROUP_FILTER_KEY = 'lingolift-study-group-filter';
+/** Select value for cards with empty `groupLabel`. */
+const GROUP_FILTER_NONE = '__none__';
 
 /** @typedef {{ date: string, peakDue: number }} DayStats */
 
@@ -103,12 +109,376 @@ const els = {
   howtoToggle: document.getElementById('howto-toggle'),
   howtoContent: document.getElementById('howto-content'),
   formAddCardSubmit: document.querySelector('#form-add-card button[type="submit"]'),
+  selectStudyGroup: document.getElementById('select-study-group'),
+  selectAddGroup: document.getElementById('select-add-group'),
+  inputNewGroupName: document.getElementById('input-new-group-name'),
+  labelNewGroup: document.getElementById('label-new-group'),
+  deckPanel: document.getElementById('deck-panel'),
+  deckToggle: document.getElementById('deck-toggle'),
+  deckContent: document.getElementById('deck-content'),
+  deckSearch: document.getElementById('deck-search'),
+  selectDeckGroupFilter: document.getElementById('select-deck-group-filter'),
+  deckList: document.getElementById('deck-list'),
+  datalistWords: document.getElementById('datalist-words'),
+  studyCard: document.getElementById('study-card'),
 };
+
+function loadLangPair() {
+  try {
+    if (!els.selectLangSource || !els.selectLangTarget) return;
+    const raw = localStorage.getItem(LANG_PAIR_KEY);
+    if (!raw) return;
+    const o = JSON.parse(raw);
+    if (o && typeof o.source === 'string' && els.selectLangSource.querySelector(`option[value="${o.source}"]`)) {
+      els.selectLangSource.value = o.source;
+    }
+    if (o && typeof o.target === 'string' && els.selectLangTarget.querySelector(`option[value="${o.target}"]`)) {
+      els.selectLangTarget.value = o.target;
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
+function saveLangPair() {
+  try {
+    if (!els.selectLangSource || !els.selectLangTarget) return;
+    localStorage.setItem(
+      LANG_PAIR_KEY,
+      JSON.stringify({ source: els.selectLangSource.value, target: els.selectLangTarget.value })
+    );
+  } catch {
+    /* ignore */
+  }
+}
+
+function loadStudyGroupFilter() {
+  try {
+    const v = localStorage.getItem(STUDY_GROUP_FILTER_KEY);
+    return typeof v === 'string' ? v : '';
+  } catch {
+    return '';
+  }
+}
+
+function saveStudyGroupFilter(value) {
+  try {
+    if (value === '') localStorage.removeItem(STUDY_GROUP_FILTER_KEY);
+    else localStorage.setItem(STUDY_GROUP_FILTER_KEY, value);
+  } catch {
+    /* ignore */
+  }
+}
+
+loadLangPair();
+
+/** @type {string} */
+let studyGroupFilter = loadStudyGroupFilter();
+/** @type {string} */
+let deckListGroupFilter = '';
+
+/** @param {{ groupLabel?: string }[]} cardList */
+function distinctSortedGroups(cardList) {
+  const set = new Set();
+  for (const c of cardList) {
+    const g = (c.groupLabel || '').trim();
+    if (g) set.add(g);
+  }
+  return Array.from(set).sort((a, b) => a.localeCompare(b));
+}
+
+/** @param {{ groupLabel?: string }[]} all */
+function cardsMatchingStudyFilter(all) {
+  if (studyGroupFilter === '') return all;
+  if (studyGroupFilter === GROUP_FILTER_NONE) return all.filter((c) => !(c.groupLabel || '').trim());
+  return all.filter((c) => (c.groupLabel || '').trim() === studyGroupFilter);
+}
+
+function populateStudyGroupSelect() {
+  const sel = els.selectStudyGroup;
+  if (!sel) return;
+  const saved = studyGroupFilter;
+  const allCards = getCards();
+  const groups = distinctSortedGroups(allCards);
+  sel.textContent = '';
+  const optAll = document.createElement('option');
+  optAll.value = '';
+  optAll.textContent = t('groupFilterAll');
+  sel.appendChild(optAll);
+  const optNone = document.createElement('option');
+  optNone.value = GROUP_FILTER_NONE;
+  optNone.textContent = t('groupUngrouped');
+  sel.appendChild(optNone);
+  for (const g of groups) {
+    const o = document.createElement('option');
+    o.value = g;
+    o.textContent = g;
+    sel.appendChild(o);
+  }
+  const ok = saved === '' || saved === GROUP_FILTER_NONE || groups.includes(saved);
+  if (!ok) {
+    studyGroupFilter = '';
+    saveStudyGroupFilter('');
+  }
+  sel.value =
+    studyGroupFilter === '' ? '' : studyGroupFilter === GROUP_FILTER_NONE ? GROUP_FILTER_NONE : studyGroupFilter;
+}
+
+function populateAddGroupSelect() {
+  const sel = els.selectAddGroup;
+  if (!sel) return;
+  const prev = sel.value;
+  const groups = distinctSortedGroups(getCards());
+  sel.textContent = '';
+  const o0 = document.createElement('option');
+  o0.value = '';
+  o0.textContent = t('groupUngrouped');
+  sel.appendChild(o0);
+  for (const g of groups) {
+    const o = document.createElement('option');
+    o.value = g;
+    o.textContent = g;
+    sel.appendChild(o);
+  }
+  const on = document.createElement('option');
+  on.value = '__new__';
+  on.textContent = t('groupNewOption');
+  sel.appendChild(on);
+  if (prev === '__new__' || prev === '' || groups.includes(prev)) sel.value = prev;
+  else sel.value = '';
+  toggleNewGroupInput();
+}
+
+function populateDeckGroupFilter() {
+  const sel = els.selectDeckGroupFilter;
+  if (!sel) return;
+  const saved = deckListGroupFilter;
+  const groups = distinctSortedGroups(getCards());
+  sel.textContent = '';
+  const o0 = document.createElement('option');
+  o0.value = '';
+  o0.textContent = t('groupFilterAll');
+  sel.appendChild(o0);
+  const o1 = document.createElement('option');
+  o1.value = GROUP_FILTER_NONE;
+  o1.textContent = t('groupUngrouped');
+  sel.appendChild(o1);
+  for (const g of groups) {
+    const o = document.createElement('option');
+    o.value = g;
+    o.textContent = g;
+    sel.appendChild(o);
+  }
+  const ok = saved === '' || saved === GROUP_FILTER_NONE || groups.includes(saved);
+  if (!ok) deckListGroupFilter = '';
+  sel.value =
+    deckListGroupFilter === '' ? '' : deckListGroupFilter === GROUP_FILTER_NONE ? GROUP_FILTER_NONE : deckListGroupFilter;
+}
+
+function toggleNewGroupInput() {
+  const isNew = els.selectAddGroup?.value === '__new__';
+  if (els.labelNewGroup) {
+    els.labelNewGroup.classList.toggle('field--new-group--visible', isNew);
+    els.labelNewGroup.setAttribute('aria-hidden', isNew ? 'false' : 'true');
+  }
+  if (!isNew && els.inputNewGroupName) els.inputNewGroupName.value = '';
+}
+
+function refreshWordDatalist() {
+  const dl = els.datalistWords;
+  if (!dl) return;
+  dl.textContent = '';
+  let gFilter = '';
+  if (els.selectAddGroup?.value === '__new__') gFilter = (els.inputNewGroupName?.value || '').trim();
+  else gFilter = (els.selectAddGroup?.value || '').trim();
+  for (const c of getCards()) {
+    const cg = (c.groupLabel || '').trim();
+    if (cg !== gFilter) continue;
+    const opt = document.createElement('option');
+    opt.value = c.word;
+    dl.appendChild(opt);
+  }
+}
+
+/** @returns {string} */
+function getAddFormGroupLabel() {
+  const v = els.selectAddGroup?.value;
+  if (v === '__new__') return (els.inputNewGroupName?.value || '').trim();
+  return (v || '').trim();
+}
+
+/** @type {ReturnType<typeof setTimeout> | null} */
+let deckSearchDebounceTimer = null;
+
+function scheduleRenderDeckList() {
+  if (!els.deckList) return;
+  clearTimeout(deckSearchDebounceTimer);
+  deckSearchDebounceTimer = setTimeout(() => {
+    deckSearchDebounceTimer = null;
+    renderDeckList();
+  }, 200);
+}
+
+/** @param {{ id: string, word: string, translation: string, nextReview: number, groupLabel?: string }[]} all */
+function cardsMatchingDeckFilters(all) {
+  let list = all.slice().sort((a, b) => a.word.localeCompare(b.word, undefined, { sensitivity: 'base' }));
+  if (deckListGroupFilter === GROUP_FILTER_NONE) list = list.filter((c) => !(c.groupLabel || '').trim());
+  else if (deckListGroupFilter !== '') list = list.filter((c) => (c.groupLabel || '').trim() === deckListGroupFilter);
+  const q = (els.deckSearch?.value || '').trim().toLowerCase();
+  if (q)
+    list = list.filter(
+      (c) => c.word.toLowerCase().includes(q) || c.translation.toLowerCase().includes(q)
+    );
+  return list;
+}
+
+function closeAllDeckEdits() {
+  els.deckList?.querySelectorAll('.deck-row__editor').forEach((n) => n.remove());
+}
+
+/**
+ * @param {HTMLDivElement} row
+ * @param {{ id: string, word: string, translation: string, nextReview: number, groupLabel?: string }} card
+ */
+function openDeckEdit(row, card) {
+  closeAllDeckEdits();
+  const ed = document.createElement('div');
+  ed.className = 'deck-row__editor';
+  const iw = document.createElement('input');
+  iw.type = 'text';
+  iw.value = card.word;
+  iw.className = 'deck-edit-input';
+  iw.setAttribute('aria-label', t('fieldWord'));
+  const it = document.createElement('input');
+  it.type = 'text';
+  it.value = card.translation;
+  it.className = 'deck-edit-input';
+  it.setAttribute('aria-label', t('fieldTranslation'));
+  const sg = document.createElement('select');
+  sg.className = 'select-lang deck-edit-select';
+  sg.setAttribute('aria-label', t('fieldCardGroup'));
+  const curG = (card.groupLabel || '').trim();
+  const o0 = document.createElement('option');
+  o0.value = '';
+  o0.textContent = t('groupUngrouped');
+  sg.appendChild(o0);
+  const seen = new Set(['']);
+  for (const g of distinctSortedGroups(getCards())) {
+    const o = document.createElement('option');
+    o.value = g;
+    o.textContent = g;
+    sg.appendChild(o);
+    seen.add(g);
+  }
+  if (curG && !seen.has(curG)) {
+    const o = document.createElement('option');
+    o.value = curG;
+    o.textContent = curG;
+    sg.appendChild(o);
+  }
+  sg.value = curG;
+  const btnS = document.createElement('button');
+  btnS.type = 'button';
+  btnS.className = 'btn btn--secondary deck-edit-save';
+  btnS.textContent = t('deckSave');
+  const btnC = document.createElement('button');
+  btnC.type = 'button';
+  btnC.className = 'btn btn--ghost deck-edit-cancel';
+  btnC.textContent = t('deckCancel');
+  btnC.addEventListener('click', () => {
+    ed.remove();
+  });
+  btnS.addEventListener('click', async () => {
+    const ok = await updateCardFields(card.id, {
+      word: iw.value,
+      translation: it.value,
+      groupLabel: sg.value,
+    });
+    if (!ok) {
+      showToast(t('alertDuplicateWord'));
+      return;
+    }
+    ed.remove();
+    showToast(t('toastCardUpdated'));
+    renderDashboard();
+  });
+  ed.appendChild(iw);
+  ed.appendChild(it);
+  ed.appendChild(sg);
+  ed.appendChild(btnS);
+  ed.appendChild(btnC);
+  row.appendChild(ed);
+}
+
+async function confirmDeleteDeckCard(id) {
+  if (!confirm(t('confirmDeleteCard'))) return;
+  await deleteCard(id);
+  showToast(t('toastCardDeleted'));
+  renderDashboard();
+}
+
+function renderDeckList() {
+  if (!els.deckList) return;
+  const list = cardsMatchingDeckFilters(getCards());
+  els.deckList.textContent = '';
+  if (list.length === 0) {
+    const p = document.createElement('p');
+    p.className = 'deck-empty';
+    p.textContent = t('deckEmpty');
+    els.deckList.appendChild(p);
+    return;
+  }
+  for (const card of list) {
+    const row = document.createElement('div');
+    row.className = 'deck-row';
+    const main = document.createElement('div');
+    main.className = 'deck-row__main';
+    const w = document.createElement('span');
+    w.className = 'deck-row__word';
+    w.textContent = card.word;
+    const tr = document.createElement('span');
+    tr.className = 'deck-row__trans';
+    tr.textContent = card.translation;
+    const badge = document.createElement('span');
+    badge.className = 'deck-row__badge';
+    badge.textContent = (card.groupLabel || '').trim() || t('groupUngrouped');
+    const actions = document.createElement('div');
+    actions.className = 'deck-row__actions';
+    const btnEdit = document.createElement('button');
+    btnEdit.type = 'button';
+    btnEdit.className = 'btn btn--ghost deck-row__btn';
+    btnEdit.textContent = t('deckEdit');
+    const btnDel = document.createElement('button');
+    btnDel.type = 'button';
+    btnDel.className = 'btn btn--ghost deck-row__btn deck-row__btn--danger';
+    btnDel.textContent = t('deckDelete');
+    btnEdit.addEventListener('click', () => openDeckEdit(row, card));
+    btnDel.addEventListener('click', () => void confirmDeleteDeckCard(card.id));
+    actions.appendChild(btnEdit);
+    actions.appendChild(btnDel);
+    main.appendChild(w);
+    main.appendChild(tr);
+    main.appendChild(badge);
+    row.appendChild(main);
+    row.appendChild(actions);
+    els.deckList.appendChild(row);
+  }
+}
+
+function focusStartReview() {
+  requestAnimationFrame(() => {
+    try {
+      els.btnStartReview?.focus();
+    } catch {
+      /* ignore */
+    }
+  });
+}
 
 /** @type {ReturnType<typeof setTimeout> | null} */
 let footerSyncCheckTimer = null;
 
-/** @type {{ id: string, word: string, translation: string, nextReview: number }[]} */
+/** @type {{ id: string, word: string, translation: string, nextReview: number, groupLabel?: string }[]} */
 let queue = [];
 let queueIndex = 0;
 let toastTimer = null;
@@ -233,10 +603,16 @@ function setStudyChromeActive(active) {
 }
 
 function renderDashboard() {
-  const cards = getCards();
-  const due = dueTodayQueue(cards);
+  populateStudyGroupSelect();
+  populateAddGroupSelect();
+  populateDeckGroupFilter();
+  refreshWordDatalist();
+
+  const allCards = getCards();
+  const filtered = cardsMatchingStudyFilter(allCards);
+  const due = dueTodayQueue(filtered);
   const remaining = due.length;
-  const total = cards.length;
+  const total = allCards.length;
   const stats = getDayStats(remaining);
   const peak = stats.peakDue;
   const brainFill = peak ? Math.min(1, Math.max(0, remaining / peak)) : 0;
@@ -250,8 +626,9 @@ function renderDashboard() {
       : t('progressLeftDue', { remaining, peak });
 
   if (remaining === 0) {
-    els.reviewHint.textContent =
-      total === 0 ? t('reviewHintEmptyDeck') : t('reviewHintNoneToday');
+    if (total === 0) els.reviewHint.textContent = t('reviewHintEmptyDeck');
+    else if (filtered.length === 0) els.reviewHint.textContent = t('reviewHintNoCardsInGroup');
+    else els.reviewHint.textContent = t('reviewHintNoneToday');
     els.btnStartReview.disabled = true;
   } else {
     els.reviewHint.textContent = '';
@@ -267,6 +644,7 @@ function renderDashboard() {
     els.accountHint.textContent = '';
   }
 
+  renderDeckList();
   updateSyncLabel();
 }
 
@@ -318,6 +696,7 @@ function finishStudySession() {
   els.viewDashboard.classList.add('view--active');
   els.viewDashboard.hidden = false;
   renderDashboard();
+  focusStartReview();
   showToast(t('toastSessionComplete'));
 }
 
@@ -374,8 +753,8 @@ function detachStudyKeyboard() {
 }
 
 function startReview() {
-  const cards = getCards();
-  queue = dueTodayQueue(cards);
+  const filtered = cardsMatchingStudyFilter(getCards());
+  queue = dueTodayQueue(filtered);
   if (queue.length === 0) {
     showToast(t('toastNoCardsDue'));
     return;
@@ -425,6 +804,15 @@ async function runAddCardFlow() {
   const translation = els.inputTranslation.value.trim();
   if (!word || !translation) return;
 
+  if (els.selectAddGroup?.value === '__new__') {
+    const ng = (els.inputNewGroupName?.value || '').trim();
+    if (!ng) {
+      showToast(t('toastEnterNewGroup'));
+      els.inputNewGroupName?.focus();
+      return;
+    }
+  }
+
   const submitBtn = els.formAddCardSubmit;
   if (submitBtn) submitBtn.disabled = true;
 
@@ -434,8 +822,10 @@ async function runAddCardFlow() {
     els.inputWord.focus();
   };
 
+  const groupLabel = getAddFormGroupLabel();
+
   try {
-    const card = await addCard(word, translation);
+    const card = await addCard(word, translation, groupLabel);
     if (card === null) {
       showToast(t('alertDuplicateWord'));
       return;
@@ -457,6 +847,95 @@ if (els.btnTranslateWand) {
 }
 
 els.btnStartReview.addEventListener('click', startReview);
+
+els.selectLangSource?.addEventListener('change', saveLangPair);
+els.selectLangTarget?.addEventListener('change', saveLangPair);
+
+els.selectStudyGroup?.addEventListener('change', () => {
+  if (!els.selectStudyGroup) return;
+  studyGroupFilter = els.selectStudyGroup.value;
+  saveStudyGroupFilter(studyGroupFilter);
+  renderDashboard();
+});
+
+els.selectAddGroup?.addEventListener('change', () => {
+  toggleNewGroupInput();
+  refreshWordDatalist();
+});
+
+els.inputNewGroupName?.addEventListener('input', () => {
+  refreshWordDatalist();
+});
+
+els.deckToggle?.addEventListener('click', () => {
+  if (!els.deckContent || !els.deckToggle || !els.deckPanel) return;
+  const willOpen = !els.deckPanel.classList.contains('deck-panel--open');
+  els.deckPanel.classList.toggle('deck-panel--open', willOpen);
+  els.deckContent.setAttribute('aria-hidden', willOpen ? 'false' : 'true');
+  els.deckToggle.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+  if (willOpen) renderDeckList();
+});
+
+els.deckSearch?.addEventListener('input', () => {
+  scheduleRenderDeckList();
+});
+
+els.selectDeckGroupFilter?.addEventListener('change', () => {
+  deckListGroupFilter = els.selectDeckGroupFilter?.value || '';
+  renderDeckList();
+});
+
+let swipePtrId = null;
+let swipeStartX = 0;
+const SWIPE_MIN_PX = 56;
+
+function prefersReducedMotion() {
+  try {
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  } catch {
+    return false;
+  }
+}
+
+function canStudySwipe() {
+  return (
+    !prefersReducedMotion() &&
+    !!els.viewStudy?.classList.contains('view--active') &&
+    !!els.btnShowAnswer?.hidden &&
+    !els.gradeRow?.hidden
+  );
+}
+
+/** @param {PointerEvent} e */
+function onStudySwipePointerDown(e) {
+  if (e.pointerType !== 'touch' || !canStudySwipe()) return;
+  swipePtrId = e.pointerId;
+  swipeStartX = e.clientX;
+  try {
+    els.studyCard?.setPointerCapture(e.pointerId);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** @param {PointerEvent} e */
+function onStudySwipePointerUp(e) {
+  if (swipePtrId !== e.pointerId) return;
+  swipePtrId = null;
+  if (e.pointerType !== 'touch' || !canStudySwipe()) return;
+  const dx = e.clientX - swipeStartX;
+  if (dx < -SWIPE_MIN_PX) void grade(true);
+  else if (dx > SWIPE_MIN_PX) void grade(false);
+}
+
+function attachStudySwipe() {
+  const el = els.studyCard;
+  if (!el || el.dataset.swipeBound === '1') return;
+  el.dataset.swipeBound = '1';
+  el.addEventListener('pointerdown', onStudySwipePointerDown);
+  el.addEventListener('pointerup', onStudySwipePointerUp);
+  el.addEventListener('pointercancel', onStudySwipePointerUp);
+}
 
 function restoreFooterSyncLabel() {
   els.btnForceSync.classList.remove('btn-footer-sync--success');
@@ -498,6 +977,7 @@ els.btnExitStudy.addEventListener('click', () => {
   els.viewDashboard.classList.add('view--active');
   els.viewDashboard.hidden = false;
   renderDashboard();
+  focusStartReview();
 });
 
 els.btnShowAnswer.addEventListener('click', () => {
@@ -528,6 +1008,7 @@ function registerSW() {
 }
 
 applyUiStrings();
+attachStudySwipe();
 
 els.howtoToggle?.addEventListener('click', () => {
   const panel = els.howtoPanel;

@@ -1,9 +1,13 @@
 # LingoLift — project memory (for AI context)
 
-**Document version:** 15.3 (Restored)  
-**App / Service Worker cache:** `lingolift-v18-final` (`sw.js` → `CACHE = 'lingolift-v18-final'`)
+**Document version:** 19.1 (Smooth disclosures + select polish)  
+**App / Service Worker cache:** `lingolift-v34-smooth-disclosures` (`sw.js` → `CACHE = 'lingolift-v34-smooth-disclosures'`)
 
-**v18 (SW hard reset):** Cache name **`lingolift-v18-final`**; **`install`** calls **`self.skipWaiting()`** first so updates activate immediately; **`activate`** deletes **all** caches whose name is not the current **`CACHE`**, then **`clients.claim()`**. OCR/Tesseract UI and scripts remain removed (see v15.3).
+**v19.1:** **My deck** and **New group** row use the same disclosure pattern as **How to use**: `max-height` + opacity transitions (not `hidden`); **How to** panel gets a light open-state border. **`.select-lang`** uses slightly longer easing on border/shadow/background. Service worker cache **`lingolift-v34-smooth-disclosures`**.
+
+**v19:** **Word groups** (`group_label` in Supabase, `groupLabel` on client cards). Duplicate words are allowed in **different** groups only (`isWordDuplicateInGroup`). **Group for review** (`#select-study-group`) filters which cards count toward “due today” and enter the **Repeat** queue; choice persisted in `localStorage` key `lingolift-study-group-filter` (`''` = all groups, `__none__` = ungrouped only). **Add card** form: group `<select>` (`#select-add-group`) with **New group…** (`__new__`) + `#input-new-group-name`. **My deck** collapsible panel: search, group filter, list with **Edit** / **Delete**; edits use `updateCardFields`, deletes use `deleteCard` with outbox ops `update_fields` and `delete`. **Language pair** for GTX (`#select-lang-source` / `#select-lang-target`) persisted in `localStorage` key `lingolift-lang-pair`. **`<datalist id="datalist-words">`** on `#input-word` suggests existing words in the **currently selected add-group** (including typed new group name). **Study swipe** (touch only): after answer is shown, horizontal swipe on `#study-card` triggers Hard (left) / Easy (right); disabled when `prefers-reduced-motion: reduce`. **SQL:** new installs include `group_label` in [sql/cards.sql](sql/cards.sql); existing DBs run [sql/add_group_label.sql](sql/add_group_label.sql). RLS unchanged (`user_id` policies already cover update/delete).
+
+**v18 (SW hard reset):** Cache name bumps; **`install`** calls **`self.skipWaiting()`** first; **`activate`** deletes **all** caches whose name is not the current **`CACHE`**, then **`clients.claim()`**.
 
 **v15.3 (Restored):** Rolled back from OCR/Camera experiment. Restored stable minimalist UI with bilingual card support and magic auto-translate. **Tesseract.js**, camera button, photo input, and scanning overlay removed from **`index.html`** / **`app.js`** / **`i18n.js`** / **`css/styles.css`**. Service Worker uses **core app precache only** (no OCR CDN URLs) so clients drop stale Tesseract entries from cache.
 
@@ -19,7 +23,7 @@
 
 **Major pivot (v11, still applies): English-only UI.** Multi-language support (RU, UA, PT) and the header language switcher were removed for a cleaner, unified international experience. The app is **English-only**; `<html lang="en">` is fixed. **Core focus remains learning Portuguese vocabulary** (words often in PT, translations often in English). Legacy `localStorage` key `lingolift-lang` is cleared on load.
 
-**v12 UI (still applies):** The Add card form includes **Source language** and **Target language** selects (Google codes `pt`, `en`, `ru`, `uk`). Defaults: source **PT**, target **EN**. The magic wand (🪄) calls Google GTX with **`sl`** and **`tl`** from those selects.
+**v12 UI (still applies):** The Add card form includes **Source language** and **Target language** selects (Google codes `pt`, `en`, `ru`, `uk`). Defaults: source **PT**, target **EN**. The magic wand (🪄) calls Google GTX with **`sl`** and **`tl`** from those selects. **v19:** those selects also persist via **`lingolift-lang-pair`**.
 
 ---
 
@@ -28,7 +32,7 @@
 - **`js/app.js`:** `dueTodayQueue` uses one **`endOfToday()`** read and a single pass + sort (no per-card `filter` callback); removed **`loadCards`** wrapper; **`parseGtxTranslation`** builds an array then **`join`**; cached DOM refs for how-to controls and add-card submit; **`void`** on fire-and-forget refresh.
 - **`js/data-store.js`:** **`runRefreshPipeline`** uses **`const { client, userId } = await ensureSession()`** and passes **`client`** into **`flushOutbox`**, **`fetchRemoteCards`**, **`migrateLegacyIfNeeded`** to avoid redundant **`ensureClient()`**; **`migrateLegacyIfNeeded(userId, remote, client)`** reuses the first remote fetch and returns **`true`** only when legacy rows were inserted, then refetches once; **`addCard`** / **`updateCardNextReview`** use **`client`** from **`ensureSession()`** only.
 - **`css/styles.css`:** Sync strip uses **`contain: layout`**, **`translateZ(0)`**, and opacity timing aligned with **`--sync-ease`** to reduce flicker; **`.flash-back-wrap`** uses **`translate3d`**, **`contain: content`**, **`backface-visibility: hidden`** for smoother compositing on mobile.
-- **`sw.js`:** Install uses **`Promise.allSettled`** per asset so one failed URL does not block the rest; **`self.skipWaiting()`** at start of **`install`**; cache name bumped with versions (e.g. **`lingolift-v18-final`** for shell assets); **`activate`** purges non-current caches.
+- **`sw.js`:** Install uses **`Promise.allSettled`** per asset so one failed URL does not block the rest; **`self.skipWaiting()`** at start of **`install`**; cache name bumped with versions (e.g. **`lingolift-v33-deck-groups`** for shell assets); **`activate`** purges non-current caches.
 - **`js/i18n.js`:** Removed unused string keys (**`toastSynced`**, **`toastEnterWord`**) in earlier passes; OCR strings removed in v15.3 restore.
 
 ---
@@ -36,9 +40,9 @@
 ## Tech stack
 
 - **Frontend:** Vanilla JS (ES modules), no framework. Entry: `index.html` → `js/app.js`.
-- **UI strings:** `js/i18n.js` — single **`strings`** object (English); **`t(key, vars)`** and **`applyUiStrings()`** populate `[data-i18n]`, `[data-i18n-html]`, placeholders, titles. No `localStorage` language preference.
-- **Data & cloud:** `js/data-store.js` — Supabase JS client (`@supabase/supabase-js` via importmap), anonymous auth session, table **`cards`**. **Supabase Storage is not used** in this repo.
-- **Offline / PWA:** `sw.js` precaches shell assets + icons; GET to `*.supabase.co` is network-first; **`cdn.jsdelivr.net`** and **`esm.sh`** are cache-first for offline libs (e.g. Supabase ESM). Local cache: `localStorage` keys `lingolift-cards-cache`, `lingolift-sync-outbox`, legacy `lingolift-cards`.
+- **UI strings:** `js/i18n.js` — single **`strings`** object (English); **`t(key, vars)`** and **`applyUiStrings()`** populate `[data-i18n]`, `[data-i18n-html]`, placeholders, titles. No `localStorage` language preference for UI locale (English fixed); **`lingolift-lang-pair`** stores only GTX source/target codes.
+- **Data & cloud:** `js/data-store.js` — Supabase JS client (`@supabase/supabase-js` via importmap), anonymous auth session, table **`cards`** with **`group_label`**. **Supabase Storage is not used** in this repo.
+- **Offline / PWA:** `sw.js` precaches shell assets + icons; GET to `*.supabase.co` is network-first; **`cdn.jsdelivr.net`** and **`esm.sh`** are cache-first for offline libs (e.g. Supabase ESM). Local cache: `localStorage` keys `lingolift-cards-cache`, `lingolift-sync-outbox`, legacy `lingolift-cards`; **`lingolift-study-group-filter`**, **`lingolift-lang-pair`**.
 
 ---
 
@@ -52,7 +56,7 @@
 ## Spaced repetition
 
 - **Intervals** (`data-store.js`): `HARD_MS` (~6 hours), `EASY_MS` (**3 days**).
-- **Due today** (`app.js`): `nextReview` on or before end of local calendar day; queue built with a lightweight loop + sort. Progress bar uses `lingolift-day-stats`.
+- **Due today** (`app.js`): `nextReview` on or before end of local calendar day; queue built with a lightweight loop + sort. Progress bar uses `lingolift-day-stats`. **v19:** “Due today” and the **Repeat** queue respect **Group for review** (all / ungrouped / one named group).
 
 ---
 
@@ -67,16 +71,16 @@
 ## UI rules (high level)
 
 - **Theme:** Dark UI; **`--violet` / `--violet-glow`**, Outfit + JetBrains Mono.
-- **Copy:** Tagline **Spaced repetition**; primary action **Repeat**; footer **Cloud sync**; session end toast **All done for today!**; how-to uses six English bullets (`howtoLi1`–`howtoLi6`) in `strings`.
+- **Copy:** Tagline **Spaced repetition**; primary action **Repeat**; footer **Cloud sync**; session end toast **All done for today!**; how-to bullets in `strings` (`howtoLi1`–`howtoLi9`).
 - **Footer Cloud Sync:** Larger label font; success state **✅ only** briefly (`btn-footer-sync--success`).
 
 ---
 
 ## Sync flow, `user_id`, RLS
 
-- **Fetch:** `fetchRemoteCards(client?)` — RLS must scope rows to the authenticated user.
+- **Fetch:** `fetchRemoteCards(client?)` — selects `id, word, translation, next_review, group_label`; RLS must scope rows to the authenticated user.
 - **Writes:** Inserts/outbox include **`user_id`** from the session.
-- **Outbox:** Offline/error replay via **`flushOutbox(userId, client?)`**.
+- **Outbox:** Offline/error replay via **`flushOutbox(userId, client?)`**. Ops: **`insert`** (with optional `group_label`), **`update`** (SRS `next_review` only), **`update_fields`** (word, translation, `group_label`), **`delete`**.
 
 ---
 
@@ -88,7 +92,7 @@
 
 ## Future ideas (not implemented)
 
-- Autocomplete when adding cards; stricter RLS docs; translation proxy if GTX fails; Supabase Storage if needed.
+- Stricter RLS docs; translation proxy if GTX fails; Supabase Storage if needed.
 
 ---
 
@@ -99,7 +103,7 @@
 | UI shell   | `index.html`, `css/styles.css` |
 | App logic  | `js/app.js` |
 | UI strings | `js/i18n.js` |
-| Supabase   | `js/data-store.js`, `js/supabase-config.js` |
+| Supabase   | `js/data-store.js`, `js/supabase-config.js`, `sql/cards.sql`, `sql/add_group_label.sql` |
 | PWA cache  | `sw.js`, `manifest.json`, root `android-chrome-*.png` |
 
 **When you change versioned behavior** (SW bump, sync contract, translate API, major UI rules), **update this file** so the next session stays aligned.

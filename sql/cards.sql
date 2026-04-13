@@ -9,6 +9,7 @@ create table if not exists public.cards (
   word text not null,
   translation text not null,
   next_review timestamptz not null default now(),
+  group_label text not null default '',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
