@@ -1,7 +1,11 @@
 # LingoLift — project memory (for AI context)
 
-**Document version:** 21.4 (SW network-first + grades-today line)  
-**App / Service Worker cache:** `lingolift-v55-sw-network-first` (`sw.js` → `CACHE = 'lingolift-v55-sw-network-first'`)
+**Document version:** 21.6 (study header = unpassed left in round)  
+**App / Service Worker cache:** `lingolift-v57-words-left-round` (`sw.js` → `CACHE = 'lingolift-v57-words-left-round'`)
+
+**v21.6:** Study **`updateSessionProgress`** shows **`studyWordsLeft`** / **`studyWordsLeftOne`**: **`queue.length - queueIndex`** = cards **not yet graded** this Repeat run (including current card). **`index.html`** **`app.js?v=57-words-left-round`**. SW **`lingolift-v57-words-left-round`**.
+
+**v21.5:** Study header shows **`studySessionPosition`** **`{queueIndex+1} / {queue.length}`** instead of “N left in session”. **`gradesToday`** / **`gradesTodayTitle`** clarify **reviews** = every Hard/Easy (Repeat loops can exceed deck size). **`index.html`** **`app.js?v=56-session-position`**. SW **`lingolift-v56-session-position`**.
 
 **v21.4:** SW **network-first** for same-origin **`.html` / `.js` / `.css` / `/`** so UI fixes are not stuck on old cache-first shell. **`grade()`** calls **`bumpGradesToday()`** + **`renderDashboard()`** after **`updateCardSrs`**; dashboard shows **`gradesToday`** under the due line (**`#progress-grades-today`**). **`index.html`** **`app.js?v=55-sw-network-first`**, **`styles.css?v=55-progress-grades-line`**. SW precache CSS query aligned.
 

@@ -1,4 +1,4 @@
-const CACHE = 'lingolift-v55-sw-network-first';
+const CACHE = 'lingolift-v57-words-left-round';
 
 const ASSETS = [
   './',

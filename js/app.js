@@ -646,9 +646,11 @@ function renderDashboard() {
     if (gradesN > 0) {
       els.progressGradesToday.hidden = false;
       els.progressGradesToday.textContent = t('gradesToday', { n: gradesN });
+      els.progressGradesToday.setAttribute('title', t('gradesTodayTitle'));
     } else {
       els.progressGradesToday.hidden = true;
       els.progressGradesToday.textContent = '';
+      els.progressGradesToday.removeAttribute('title');
     }
   }
 
@@ -694,8 +696,10 @@ function updateSessionProgress() {
   const remaining = Math.max(0, total - queueIndex);
   const done = queueIndex;
   const pct = Math.round((done / total) * 100);
-  els.studyRemainingLabel.textContent =
-    remaining === 1 ? t('studyRemainingOne') : t('studyRemaining', { n: remaining });
+  /** Cards in this run not yet graded (includes the one on screen). */
+  if (remaining === 0) els.studyRemainingLabel.textContent = '';
+  else if (remaining === 1) els.studyRemainingLabel.textContent = t('studyWordsLeftOne');
+  else els.studyRemainingLabel.textContent = t('studyWordsLeft', { n: remaining });
   els.sessionBarFill.style.width = `${pct}%`;
   els.sessionBarWrap.setAttribute('aria-valuenow', String(pct));
 }
