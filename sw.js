@@ -1,4 +1,4 @@
-const CACHE = 'lingolift-v44-srs-reprobe';
+const CACHE = 'lingolift-v46-srs-unconditional-fallback';
 
 const ASSETS = [
   './',

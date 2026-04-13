@@ -1,9 +1,11 @@
 # LingoLift — project memory (for AI context)
 
-**Document version:** 20.5 (SRS cloud retry + reprobe)  
-**App / Service Worker cache:** `lingolift-v44-srs-reprobe` (`sw.js` → `CACHE = 'lingolift-v44-srs-reprobe'`)
+**Document version:** 20.6 (SRS unconditional cloud fallback)  
+**App / Service Worker cache:** `lingolift-v46-srs-unconditional-fallback` (`sw.js` → `CACHE = 'lingolift-v46-srs-unconditional-fallback'`)
 
-**v20.5:** **`runRefreshPipeline`** resets **`dbSupportsSrsStepColumn`** to **`true`** each sync so DB picks up **`srs_step`** after SQL without a cold reload. Broader **`isSrsStepOrUnknownColumnCloudError`** (PGRST204, 42703, “Could not find … column of ‘cards’”) drives fetch/outbox/add/update fallbacks. SW **`lingolift-v44-srs-reprobe`**.
+**v20.6:** **`fetchRemoteCards`**: if the **`srs_step`** select fails for **any** reason, retry **legacy select** once; on success, mark DB without **`srs_step`**. Same pattern for **insert/update** (outbox, **`addCard`**, **`updateCardSrs`**, legacy migrate): retry payload **without** **`srs_step`** when the first attempt included it; **`markDbSrsColumnUnsupported`** only when that retry succeeds. SW **`lingolift-v46-srs-unconditional-fallback`**.
+
+**v20.5:** **`runRefreshPipeline`** resets **`dbSupportsSrsStepColumn`** to **`true`** each sync so the client re-probes **`srs_step`** after SQL. SW **`lingolift-v44-srs-reprobe`**.
 
 **v20.4:** **`getLastSyncError`** / **`lastSyncError`** in **`js/data-store.js`**; failed refresh returns **`detail`**; footer **Cloud sync** toast shows **`toastSyncFailedReason`**; **`#sync-status`** **`title`** tooltip when sync is error. SW **`lingolift-v43-sync-error-detail`**.
 
