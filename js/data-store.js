@@ -84,6 +84,15 @@ let lastSyncedUserId = null;
 /** @type {Promise<{ ok: boolean, count?: number, userId?: string, reason?: string }> | null} */
 let refreshInFlight = null;
 
+/**
+ * Incremented on local card writes so a refresh that started earlier cannot call
+ * `setCards(remote)` and wipe optimistic SRS / edits (e.g. user grades during init sync).
+ */
+let localDataEpoch = 0;
+function bumpLocalDataEpoch() {
+  localDataEpoch++;
+}
+
 /** Session flags: omit optional columns on writes when DB has no migration. */
 let dbSupportsSrsStepColumn = true;
 let dbSupportsGroupLabelColumn = true;
@@ -514,6 +523,7 @@ async function migrateLegacyIfNeeded(userId, remote, clientOpt) {
 
 async function runRefreshPipeline() {
   setSyncState('syncing');
+  const epochAtStart = localDataEpoch;
   try {
     /* Re-probe optional columns after migrations. */
     dbSupportsSrsStepColumn = true;
@@ -524,6 +534,26 @@ async function runRefreshPipeline() {
     let remote = await fetchRemoteCards(client);
     const migrated = await migrateLegacyIfNeeded(userId, remote, client);
     if (migrated) remote = await fetchRemoteCards(client);
+    if (epochAtStart !== localDataEpoch) {
+      // #region agent log
+      fetch('http://127.0.0.1:7770/ingest/f28725a2-8b86-4957-bd9a-2bd7faac78d5', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'a7dc01' },
+        body: JSON.stringify({
+          sessionId: 'a7dc01',
+          runId: 'post-fix',
+          hypothesisId: 'H3',
+          location: 'data-store.js:runRefreshPipeline:skipStale',
+          message: 'skipped setCards; local mutation during refresh',
+          data: { epochAtStart, localDataEpoch },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+      // #endregion
+      lastSyncError = '';
+      setSyncState('idle');
+      return { ok: true, count: cards.length, userId, skippedStale: true };
+    }
     setCards(remote);
     lastSyncError = '';
     setSyncState('idle');
@@ -541,6 +571,22 @@ async function runRefreshPipeline() {
  * Do not call from inside ensureSession — use auth listener for post–sign-in runs.
  */
 export function refreshFromRemote() {
+  // #region agent log
+  const _reuse = !!refreshInFlight;
+  fetch('http://127.0.0.1:7770/ingest/f28725a2-8b86-4957-bd9a-2bd7faac78d5', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'a7dc01' },
+    body: JSON.stringify({
+      sessionId: 'a7dc01',
+      runId: 'post-fix',
+      hypothesisId: 'H2',
+      location: 'data-store.js:refreshFromRemote',
+      message: 'refresh entry',
+      data: { reuseInFlight: _reuse, online: navigator.onLine },
+      timestamp: Date.now(),
+    }),
+  }).catch(() => {});
+  // #endregion
   if (!navigator.onLine) {
     setSyncState('offline');
     return Promise.resolve({ ok: false, reason: 'offline' });
@@ -599,6 +645,7 @@ export async function addCard(word, translation, groupLabel = '') {
   };
 
   const merged = mergeById(cards, [card]);
+  bumpLocalDataEpoch();
   setCards(merged);
 
   if (!navigator.onLine) {
@@ -639,7 +686,23 @@ export async function updateCardSrs(cardId, srs) {
   const next_review = new Date(srs.nextReviewMs).toISOString();
   const srs_step = clampSrsStep(srs.srsStep);
   const idx = cards.findIndex((c) => c.id === cardId);
+  // #region agent log
+  fetch('http://127.0.0.1:7770/ingest/f28725a2-8b86-4957-bd9a-2bd7faac78d5', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'a7dc01' },
+    body: JSON.stringify({
+      sessionId: 'a7dc01',
+      runId: 'post-fix',
+      hypothesisId: 'H1',
+      location: 'data-store.js:updateCardSrs:entry',
+      message: 'updateCardSrs findIndex',
+      data: { cardId, idx, cardsLen: cards.length, targetNextMs: srs.nextReviewMs },
+      timestamp: Date.now(),
+    }),
+  }).catch(() => {});
+  // #endregion
   if (idx === -1) return;
+  bumpLocalDataEpoch();
   const next = cards.slice();
   next[idx] = { ...next[idx], nextReview: srs.nextReviewMs, srsStep: srs_step };
   setCards(next);
@@ -671,7 +734,22 @@ export async function updateCardSrs(cardId, srs) {
       if (!error) dbSupportsSrsStepColumn = false;
       else throw first;
     } else if (error) throw error;
-    await refreshFromRemote();
+    // #region agent log
+    const _local = cards.find((c) => c.id === cardId)?.nextReview;
+    fetch('http://127.0.0.1:7770/ingest/f28725a2-8b86-4957-bd9a-2bd7faac78d5', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'a7dc01' },
+      body: JSON.stringify({
+        sessionId: 'a7dc01',
+        runId: 'post-fix',
+        hypothesisId: 'H3',
+        location: 'data-store.js:updateCardSrs:afterDbUpdate',
+        message: 'local nextReview after cloud update (no full refresh)',
+        data: { cardId, nextReviewMs: _local, expectedMs: srs.nextReviewMs, match: _local === srs.nextReviewMs },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
   } catch (e) {
     console.error(e);
     const box = readOutbox();
@@ -694,6 +772,7 @@ export async function updateCardFields(cardId, fields) {
 
   const idx = cards.findIndex((c) => c.id === cardId);
   if (idx === -1) return false;
+  bumpLocalDataEpoch();
   const next = cards.slice();
   next[idx] = { ...next[idx], word: w, translation: tr, groupLabel: gl };
   setCards(next);
@@ -731,6 +810,7 @@ export async function updateCardFields(cardId, fields) {
 }
 
 export async function deleteCard(cardId) {
+  bumpLocalDataEpoch();
   const next = cards.filter((c) => c.id !== cardId);
   setCards(next);
 

@@ -1,4 +1,4 @@
-const CACHE = 'lingolift-v48-group-label-fallback';
+const CACHE = 'lingolift-v50-grade-single-flight';
 
 const ASSETS = [
   './',

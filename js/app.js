@@ -455,6 +455,8 @@ let footerSyncCheckTimer = null;
 /** @type {{ id: string, word: string, translation: string, nextReview: number, groupLabel?: string, srsStep?: number }[]} */
 let queue = [];
 let queueIndex = 0;
+/** Prevents overlapping `grade()` (e.g. double tap / swipe + key) from reusing stale `queue[queueIndex]` / `srsStep`. */
+let gradeInFlight = false;
 let toastTimer = null;
 
 function showToast(msg) {
@@ -759,19 +761,86 @@ function startReview() {
 }
 
 async function grade(hard) {
-  const card = queue[queueIndex];
-  if (!card) return;
-  const now = Date.now();
-  const srs = computeNextSrs(hard, card.srsStep ?? 0, now);
-  await updateCardSrs(card.id, srs);
-
-  queueIndex += 1;
-  if (queueIndex >= queue.length) {
-    updateSessionProgress();
-    finishStudySession();
+  if (gradeInFlight) {
+    // #region agent log
+    fetch('http://127.0.0.1:7770/ingest/f28725a2-8b86-4957-bd9a-2bd7faac78d5', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'a7dc01' },
+      body: JSON.stringify({
+        sessionId: 'a7dc01',
+        runId: 'post-fix',
+        hypothesisId: 'H5',
+        location: 'app.js:grade:skippedConcurrent',
+        message: 'grade ignored while previous grade in flight',
+        data: { hard, queueIndex },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
     return;
   }
-  showStudyCard();
+  const card = queue[queueIndex];
+  if (!card) return;
+  gradeInFlight = true;
+  if (els.btnHard) els.btnHard.disabled = true;
+  if (els.btnEasy) els.btnEasy.disabled = true;
+  try {
+    const now = Date.now();
+    const srs = computeNextSrs(hard, card.srsStep ?? 0, now);
+    // #region agent log
+    fetch('http://127.0.0.1:7770/ingest/f28725a2-8b86-4957-bd9a-2bd7faac78d5', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'a7dc01' },
+      body: JSON.stringify({
+        sessionId: 'a7dc01',
+        runId: 'post-fix',
+        hypothesisId: 'H4',
+        location: 'app.js:grade:beforeUpdate',
+        message: 'grade start',
+        data: {
+          cardId: card.id,
+          hard,
+          queueIndex,
+          queueLen: queue.length,
+          srsNextMs: srs.nextReviewMs,
+          srsStep: srs.srsStep,
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
+    await updateCardSrs(card.id, srs);
+    const slot = queueIndex;
+    const fresh = getCards().find((c) => c.id === card.id);
+    if (fresh && slot >= 0 && slot < queue.length) queue[slot] = fresh;
+    // #region agent log
+    fetch('http://127.0.0.1:7770/ingest/f28725a2-8b86-4957-bd9a-2bd7faac78d5', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'a7dc01' },
+      body: JSON.stringify({
+        sessionId: 'a7dc01',
+        runId: 'post-fix',
+        hypothesisId: 'H4',
+        location: 'app.js:grade:afterUpdate',
+        message: 'grade after updateCardSrs',
+        data: { cardId: card.id, queueIndexBeforeInc: queueIndex, syncedSrsStep: fresh?.srsStep },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
+
+    queueIndex += 1;
+    if (queueIndex >= queue.length) {
+      updateSessionProgress();
+      finishStudySession();
+      return;
+    }
+    showStudyCard();
+  } finally {
+    gradeInFlight = false;
+    if (els.btnHard) els.btnHard.disabled = false;
+    if (els.btnEasy) els.btnEasy.disabled = false;
+  }
 }
 
 function onAddCardFormSubmit(e) {

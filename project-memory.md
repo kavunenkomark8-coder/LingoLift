@@ -1,7 +1,11 @@
 # LingoLift — project memory (for AI context)
 
-**Document version:** 20.7 (`group_label` cloud fallback)  
-**App / Service Worker cache:** `lingolift-v48-group-label-fallback` (`sw.js` → `CACHE = 'lingolift-v48-group-label-fallback'`)
+**Document version:** 20.9 (grade single-flight + queue resync)  
+**App / Service Worker cache:** `lingolift-v50-grade-single-flight` (`sw.js` → `CACHE = 'lingolift-v50-grade-single-flight'`)
+
+**v20.9:** **`grade()`** uses **`gradeInFlight`**: overlapping Hard/Easy (double tap, swipe + key, etc.) is ignored so a second call cannot reuse the same **`queueIndex`** / stale **`srsStep`**. After **`updateCardSrs`**, the current queue slot is replaced with the canonical object from **`getCards()`** ( **`setCards`** replaces in-store references, so the study queue could otherwise keep stale refs). Hard/Easy buttons disabled for the await window. SW **`lingolift-v50-grade-single-flight`**.
+
+**v20.8:** **Study grades** no longer **`await refreshFromRemote()`** after a successful cloud **`update`** in **`updateCardSrs`** (local cache + Supabase row are already updated; full fetch was redundant and could race with an in-flight refresh). **`localDataEpoch`** is bumped on local writes (**`addCard`**, **`updateCardSrs`**, **`updateCardFields`**, **`deleteCard`**); **`runRefreshPipeline`** skips **`setCards(remote)`** if the epoch changed mid-flight so a slow init sync cannot overwrite fresh SRS. SW **`lingolift-v49-srs-stale-refresh-guard`**. (Temporary **debug ingest** `fetch` regions may remain in **`js/app.js`** / **`js/data-store.js`** until a verification run; remove after confirmation.)
 
 **v20.7:** Old DBs without **`group_label`**: **`fetchRemoteCards`** tries **`FETCH_SELECT_CHAIN`** (drop **`srs_step`**, then **`group_label`**, then both). **`insertCardWithCloudFallback`** / **`migrateLegacyIfNeeded`** mirror that. **`update_fields`** (outbox + **`updateCardFields`**) retries without **`group_label`**. Session flags **`dbSupportsGroupLabelColumn`** / **`dbSupportsSrsStepColumn`**. Run [sql/add_group_label.sql](sql/add_group_label.sql) in Supabase for full grouping in the cloud. SW **`lingolift-v48-group-label-fallback`**.
 
