@@ -1,7 +1,19 @@
 # LingoLift — project memory (for AI context)
 
-**Document version:** 21.14 (My deck scroll velocity cap)  
-**App / Service Worker cache:** `lingolift-v67-deck-scroll-velocity` (`sw.js` → `CACHE = 'lingolift-v67-deck-scroll-velocity'`)
+**Document version:** 21.20 (My deck smooth scroll matched to expand)  
+**App / Service Worker cache:** `lingolift-v73-deck-scroll-smooth-ease` (`sw.js` → `CACHE = 'lingolift-v73-deck-scroll-smooth-ease'`)
+
+**v21.20:** **My deck** open: **one** **`scrollTo`** animation over **460ms** with **`cubic-bezier(0.33, 1, 0.68, 1)`** (same as **`grid-template-rows`**), from estimated **`inner.scrollHeight` + open chrome** ( **`0.85rem`×2 + 1px** ); **`transitionend`** / timeout only nudges remainder. Replaces per-frame Δ tracking. **`index.html`** **`app.js?v=73-deck-scroll-smooth-ease`**. SW **`lingolift-v73-deck-scroll-smooth-ease`**.
+
+**v21.19:** **My deck** open scroll: **Δ (`rect.bottom + scrollY`)** per rAF (superseded by **v21.20**).
+
+**v21.18:** **My deck** open scroll: viewport **Δ `bottom`** (superseded).
+
+**v21.17:** **`.dashboard-grid`** uses **`align-content: flex-start`** (mobile column) and **`align-content: start`** + explicit **`grid-template-rows: auto auto auto`** (desktop ≥960px) so when the grid is taller than its content (**`flex: 1`** in a **`min-height: 100dvh`** shell, e.g. strong zoom-out), rows are **not** stretched by the default grid **`align-content: stretch`** — removes huge gaps between **Due/Add** row, **stats**, and **My deck**. **`min-height: 0`** on the grid helps flex shrinking. **`styles.css?v=70-dashboard-grid-align`**. SW **`lingolift-v70-dashboard-grid-align`**.
+
+**v21.16:** **My deck** toggle (**.`deck-panel__summary`**) is a **centered** compact **pill** (`width: auto`, **`inline-flex`**, padding, **`border-radius: 999px`**) instead of full-width; **`.deck-panel`** is a **column flex** so the expand block stays full width. **`styles.css?v=69-deck-summary-centered`**. SW **`lingolift-v69-deck-summary-centered`**.
+
+**v21.15:** Footer **`#btn-force-sync`** removed. **`h1#brand-sync`** (**`.brand-name`**, **`role="button"`**) runs **`forceFullSyncFromSupabase()`**; on **`r.ok`** calls **`location.reload()`** (no ✅, no success toasts, including **`skippedStale`**). Errors still use **`toastOfflineCloud`** / **`toastSyncFailed`** / **`toastSyncFailedReason`**. Inactive during **study** (same as former footer visibility). **`data-i18n-aria`** → **`brandSyncAria`**. **`howtoLi4`** updated. **`index.html`** **`app.js?v=68-brand-sync-title`**, **`styles.css?v=68-brand-sync-title`**. SW **`lingolift-v68-brand-sync-title`**.
 
 **v21.14:** Deck-open **rAF** scroll uses a **px/sec** ceiling (**`68 * 60`**, i.e. same as **68px** per **60Hz** frame) instead of a fixed **px/frame** cap, so **120Hz+** desktops don’t chase the panel **twice as fast** in real time (which felt like teleporting). **`index.html`** **`app.js?v=67-deck-scroll-velocity`**. SW **`lingolift-v67-deck-scroll-velocity`**.
 
@@ -61,7 +73,7 @@
 
 **v19.1:** **My deck** and **New group** row use the same disclosure pattern as **How to use**: `max-height` + opacity transitions (not `hidden`); **How to** panel gets a light open-state border. **`.select-lang`** uses slightly longer easing on border/shadow/background.
 
-**v19:** **Word groups** (`group_label` in Supabase, `groupLabel` on client cards). Duplicate words are allowed in **different** groups only (`isWordDuplicateInGroup`). **Group for review** (`#select-study-group`) filters the study pool and dashboard counts; choice persisted in `localStorage` key `lingolift-study-group-filter` (`''` = all groups, `__none__` = ungrouped only). **v21.10:** **Repeat** uses **due** cards in that filter only. **Add card** form: group `<select>` (`#select-add-group`) with **New group…** (`__new__`) + `#input-new-group-name`. **My deck** collapsible panel: search, group filter, list with **Edit** / **Delete**; edits use `updateCardFields`, deletes use `deleteCard` with outbox ops `update_fields` and `delete`. **v21.14:** on open, **rAF-tracked `scrollBy`** (velocity cap; see **v21.14** above) in parallel with deck expand. **Language pair** for GTX (`#select-lang-source` / `#select-lang-target`) persisted in `localStorage` key `lingolift-lang-pair`. **`<datalist id="datalist-words">`** on `#input-word` suggests existing words in the **currently selected add-group** (including typed new group name). **Study swipe** (touch only): after answer is shown, horizontal swipe on `#study-card` triggers Hard (left) / Easy (right); disabled when `prefers-reduced-motion: reduce`. **SQL:** new installs include `group_label` in [sql/cards.sql](sql/cards.sql); existing DBs run [sql/add_group_label.sql](sql/add_group_label.sql). RLS unchanged (`user_id` policies already cover update/delete).
+**v19:** **Word groups** (`group_label` in Supabase, `groupLabel` on client cards). Duplicate words are allowed in **different** groups only (`isWordDuplicateInGroup`). **Group for review** (`#select-study-group`) filters the study pool and dashboard counts; choice persisted in `localStorage` key `lingolift-study-group-filter` (`''` = all groups, `__none__` = ungrouped only). **v21.10:** **Repeat** uses **due** cards in that filter only. **Add card** form: group `<select>` (`#select-add-group`) with **New group…** (`__new__`) + `#input-new-group-name`. **My deck** collapsible panel: search, group filter, list with **Edit** / **Delete**; edits use `updateCardFields`, deletes use `deleteCard` with outbox ops `update_fields` and `delete`. **v21.20:** on open, **460ms eased `scrollTo`** aligned with deck **grid** expand (see **v21.20** above). **Language pair** for GTX (`#select-lang-source` / `#select-lang-target`) persisted in `localStorage` key `lingolift-lang-pair`. **`<datalist id="datalist-words">`** on `#input-word` suggests existing words in the **currently selected add-group** (including typed new group name). **Study swipe** (touch only): after answer is shown, horizontal swipe on `#study-card` triggers Hard (left) / Easy (right); disabled when `prefers-reduced-motion: reduce`. **SQL:** new installs include `group_label` in [sql/cards.sql](sql/cards.sql); existing DBs run [sql/add_group_label.sql](sql/add_group_label.sql). RLS unchanged (`user_id` policies already cover update/delete).
 
 **v18 (SW hard reset):** Cache name bumps; **`install`** calls **`self.skipWaiting()`** first; **`activate`** deletes **all** caches whose name is not the current **`CACHE`**, then **`clients.claim()`**.
 
@@ -75,7 +87,7 @@
 
 **v14:** Performance pass: leaner due-today queue, shared Supabase client in refresh/add/update paths, legacy migration refetch only when needed, GPU-friendlier review reveal and sync strip, resilient SW precache.
 
-**v13.1 (still applies for UX):** No frog; dynamic sync strip; **`app--study`** hides footer / how-to / sync strip; large Hard/Easy; translation reveal animation.
+**v13.1 (still applies for UX):** No frog; dynamic sync strip; **`app--study`** hides how-to / sync strip; large Hard/Easy; translation reveal animation.
 
 **Major pivot (v11, still applies): English-only UI.** Multi-language support (RU, UA, PT) and the header language switcher were removed for a cleaner, unified international experience. The app is **English-only**; `<html lang="en">` is fixed. **Core focus remains learning Portuguese vocabulary** (words often in PT, translations often in English). Legacy `localStorage` key `lingolift-lang` is cleared on load.
 
@@ -89,14 +101,14 @@
 - **`js/data-store.js`:** **`runRefreshPipeline`** uses **`const { client, userId } = await ensureSession()`** and passes **`client`** into **`flushOutbox`**, **`fetchRemoteCards`**, **`migrateLegacyIfNeeded`** to avoid redundant **`ensureClient()`**; **`migrateLegacyIfNeeded(userId, remote, client)`** reuses the first remote fetch and returns **`true`** only when legacy rows were inserted, then refetches once; **`addCard`** / **`updateCardSrs`** use **`client`** from **`ensureSession()`** only.
 - **`css/styles.css`:** Sync strip uses **`contain: layout`**, **`translateZ(0)`**, and opacity timing aligned with **`--sync-ease`** to reduce flicker; **`.flash-back-wrap`** uses **`translate3d`**, **`contain: content`**, **`backface-visibility: hidden`** for smoother compositing on mobile.
 - **`sw.js`:** Install uses **`Promise.allSettled`** per asset so one failed URL does not block the rest; **`self.skipWaiting()`** at start of **`install`**; cache name bumped with versions (e.g. **`lingolift-v33-deck-groups`** for shell assets); **`activate`** purges non-current caches.
-- **`js/i18n.js`:** Removed unused string keys (**`toastSynced`**, **`toastEnterWord`**) in earlier passes; OCR strings removed in v15.3 restore.
+- **`js/i18n.js`:** **`[data-i18n-aria]`** in **`applyUiStrings()`** (**v21.15**). Removed unused string keys (**`toastSynced`**, **`toastEnterWord`**) in earlier passes; OCR strings removed in v15.3 restore.
 
 ---
 
 ## Tech stack
 
 - **Frontend:** Vanilla JS (ES modules), no framework. Entry: `index.html` → `js/app.js`.
-- **UI strings:** `js/i18n.js` — single **`strings`** object (English); **`t(key, vars)`** and **`applyUiStrings()`** populate `[data-i18n]`, `[data-i18n-html]`, placeholders, titles. No `localStorage` language preference for UI locale (English fixed); **`lingolift-lang-pair`** stores only GTX source/target codes.
+- **UI strings:** `js/i18n.js` — single **`strings`** object (English); **`t(key, vars)`** and **`applyUiStrings()`** populate `[data-i18n]`, `[data-i18n-html]`, placeholders, titles, **`[data-i18n-aria]`**. No `localStorage` language preference for UI locale (English fixed); **`lingolift-lang-pair`** stores only GTX source/target codes.
 - **Data & cloud:** `js/data-store.js` — Supabase JS client (`@supabase/supabase-js` via importmap), anonymous auth session, table **`cards`** with **`group_label`** and **`srs_step`**. Credentials in **`js/supabase-config.js`** (copy from **`js/supabase-config.example.js`**). **Supabase Storage is not used** in this repo.
 - **Offline / PWA:** `sw.js` precaches shell assets + icons; GET to `*.supabase.co` is network-first; **`cdn.jsdelivr.net`** and **`esm.sh`** are cache-first for offline libs (e.g. Supabase ESM). Local cache: `localStorage` keys `lingolift-cards-cache`, `lingolift-sync-outbox`, legacy `lingolift-cards`; **`lingolift-study-group-filter`**, **`lingolift-lang-pair`**.
 
@@ -104,7 +116,7 @@
 
 ## Brand / header
 
-- **Minimal header:** Violet **dot** (`.brand-dot`) next to static **`h1.brand-name`** (“LingoLift” gradient). No logo button / frog.
+- **Minimal header:** Violet **dot** (`.brand-dot`) next to **`h1.brand-name`** (**`#brand-sync`**, “LingoLift” gradient). **Tap / Enter / Space:** full cloud pull (**`forceFullSyncFromSupabase`**) then **page reload** on success (**v21.15**). Disabled while **study** view is active. No frog.
 - **PWA / favicons (v15+):** Root **`android-chrome-192x192.png`** and **`android-chrome-512x512.png`**. **`meta name="theme-color"`** **`#5312B1`** to match manifest tint.
 
 ---
@@ -127,8 +139,7 @@
 ## UI rules (high level)
 
 - **Theme:** Dark UI; **`--violet` / `--violet-glow`**, Outfit + JetBrains Mono.
-- **Copy:** Tagline **Spaced repetition**; primary action **Repeat**; footer **Cloud sync**; session end toast **All done for today!**; **Info** panel bullets in `strings` (`howtoLi1`–`howtoLi9`).
-- **Footer Cloud Sync:** Larger label font; success state **✅ only** briefly (`btn-footer-sync--success`).
+- **Copy:** Tagline **Spaced repetition**; primary action **Repeat**; **LingoLift** title = cloud pull + reload (**v21.15**); session end toast **All done for today!**; **Info** panel bullets in `strings` (`howtoLi1`–`howtoLi9`).
 
 ---
 
@@ -138,7 +149,7 @@
 - **Fetch:** `fetchRemoteCards(client?)` — adaptive **`FETCH_SELECT_CHAIN`** (drops **`group_label`** / **`srs_step`** when missing on old DBs); RLS scopes rows to the authenticated user.
 - **Writes:** Inserts/outbox include **`user_id`** from the session.
 - **Outbox:** Offline/error replay via **`flushOutbox(userId, client?)`**. Ops: **`insert`** (with optional `group_label`, **`srs_step`**), **`update`** (SRS **`next_review`** + **`srs_step`**), **`update_fields`** (word, translation, `group_label`), **`delete`**. Failures set **`lastOutboxFlushError`** and **`console.error('[LingoLift] outbox', …)`**; **`getLastOutboxFlushError()`** surfaces the latest message in the sync tooltip with **`getLastSyncError()`**.
-- **Stale refresh skip:** If **`localDataEpoch`** changes while **`runRefreshPipeline`** is in flight, **`setCards(remote)`** is skipped (avoids overwriting fresh SRS). The pipeline returns **`{ ok: true, skippedStale: true }`** and schedules a **deferred** **`refreshFromRemote()`** (~1.4s) to merge when idle. **Cloud sync** treats **`skippedStale`** as informational (toast **`toastSyncStaleRetrying`**, no footer ✅ flash).
+- **Stale refresh skip:** If **`localDataEpoch`** changes while **`runRefreshPipeline`** is in flight, **`setCards(remote)`** is skipped (avoids overwriting fresh SRS). The pipeline returns **`{ ok: true, skippedStale: true }`** and schedules a **deferred** **`refreshFromRemote()`** (~1.4s) to merge when idle. **Manual title sync** (**v21.15**): **`r.ok`** (including **`skippedStale`**) → **`location.reload()`** with no extra toast.
 - **Deploy config:** Copy [`js/supabase-config.example.js`](js/supabase-config.example.js) → **`js/supabase-config.js`**; see [README.md](README.md).
 
 ---

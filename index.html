@@ -16,7 +16,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/styles.css?v=62-deck-scroll" />
+  <link rel="stylesheet" href="css/styles.css?v=70-dashboard-grid-align" />
   <script type="importmap">
     {
       "imports": {
@@ -30,7 +30,15 @@
     <header class="top-bar">
       <div class="brand">
         <span class="brand-dot" aria-hidden="true"></span>
-        <h1 class="brand-name">LingoLift</h1>
+        <h1
+          class="brand-name"
+          id="brand-sync"
+          tabindex="0"
+          role="button"
+          data-i18n-aria="brandSyncAria"
+        >
+          LingoLift
+        </h1>
       </div>
       <p class="tagline" data-i18n="tagline">Spaced repetition</p>
     </header>
@@ -253,16 +261,10 @@
       </section>
     </main>
 
-    <footer class="app-footer">
-      <button type="button" class="btn-footer-sync" id="btn-force-sync">
-        <span class="btn-footer-sync__text" data-i18n="forceSync">Cloud sync</span>
-      </button>
-    </footer>
-
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
     <p id="study-keys-hint" class="visually-hidden" data-i18n="studyDesktopKeysHint"></p>
   </div>
   <datalist id="datalist-words"></datalist>
-  <script src="js/app.js?v=67-deck-scroll-velocity" type="module"></script>
+  <script src="js/app.js?v=73-deck-scroll-smooth-ease" type="module"></script>
 </body>
 </html>

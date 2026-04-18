@@ -113,8 +113,7 @@ const els = {
   btnEasy: document.getElementById('btn-easy'),
   toast: document.getElementById('toast'),
   syncStatus: document.getElementById('sync-status'),
-  btnForceSync: document.getElementById('btn-force-sync'),
-  btnFooterSyncText: document.querySelector('#btn-force-sync .btn-footer-sync__text'),
+  brandSyncTitle: document.getElementById('brand-sync'),
   accountHint: document.getElementById('account-hint'),
   howtoPanel: document.querySelector('.howto-panel'),
   howtoToggle: document.getElementById('howto-toggle'),
@@ -485,9 +484,6 @@ function focusStartReview() {
     }
   });
 }
-
-/** @type {ReturnType<typeof setTimeout> | null} */
-let footerSyncCheckTimer = null;
 
 /** @type {{ id: string, word: string, translation: string, nextReview: number, groupLabel?: string, srsStep?: number }[]} */
 let queue = [];
@@ -931,10 +927,33 @@ els.inputNewGroupName?.addEventListener('input', () => {
 /** Cancel pending deck open scroll (e.g. user closed the panel before animation finished). */
 let cancelDeckPanelOpenScroll = null;
 
+/** Same easing as `.deck-panel__expand` `grid-template-rows` (0.46s). Linear t∈[0,1] → eased scroll progress. */
+function easeDeckPanelGridRow(t) {
+  const x1 = 0.33;
+  const y1 = 1;
+  const x2 = 0.68;
+  const y2 = 1;
+  if (t <= 0) return 0;
+  if (t >= 1) return 1;
+  let lo = 0;
+  let hi = 1;
+  for (let i = 0; i < 14; i++) {
+    const mid = (lo + hi) / 2;
+    const x =
+      3 * (1 - mid) * (1 - mid) * mid * x1 + 3 * (1 - mid) * mid * mid * x2 + mid * mid * mid;
+    if (x < t) lo = mid;
+    else hi = mid;
+  }
+  const u = (lo + hi) / 2;
+  const y = 3 * (1 - u) * (1 - u) * u * y1 + 3 * (1 - u) * u * u * y2 + u * u * u;
+  return Math.min(1, Math.max(0, y));
+}
+
 /**
- * Scroll the window while My deck opens: each rAF closes part of the gap under the panel bottom.
- * Uses a px/sec cap (not px/frame) so high-refresh desktops don’t chase twice as fast as ~60Hz phones.
- * Reduced-motion: one scroll after transition settles.
+ * My deck open: one smooth `scrollTo` over **460ms** with the same cubic-bezier as the panel height
+ * transition, so the page moves down in parallel with the expanding block. Estimate uses
+ * `inner.scrollHeight` + open chrome (0.85rem × 2); `transitionend` applies a small remainder.
+ * Reduced-motion: single scroll after transition.
  */
 function scheduleScrollDeckPanelAfterOpen() {
   cancelDeckPanelOpenScroll?.();
@@ -945,6 +964,7 @@ function scheduleScrollDeckPanelAfterOpen() {
   if (!panel || !content) return;
 
   const margin = 24;
+  const DURATION_MS = 460;
   const reduceMotion =
     typeof window.matchMedia === 'function' &&
     window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -994,28 +1014,25 @@ function scheduleScrollDeckPanelAfterOpen() {
     return;
   }
 
-  let done = false;
   /** @type {number | null} */
-  let rafId = null;
-  const start = performance.now();
-  const MAX_MS = 580;
-  /** Same perceived cap as ~68px per 60Hz frame, but stable on 120Hz+ displays. */
-  const MAX_SCROLL_VELOCITY_PPS = 68 * 60;
-  let lastFrameTs = start;
+  let scrollAnimRaf = null;
+  /** @type {ReturnType<typeof setTimeout> | null} */
+  let fallbackId = null;
+  let alive = true;
 
-  const clearParallel = () => {
-    if (rafId != null) {
-      cancelAnimationFrame(rafId);
-      rafId = null;
+  const clearPending = () => {
+    if (scrollAnimRaf != null) {
+      cancelAnimationFrame(scrollAnimRaf);
+      scrollAnimRaf = null;
     }
     content.removeEventListener('transitionend', onEndParallel);
+    if (fallbackId != null) {
+      window.clearTimeout(fallbackId);
+      fallbackId = null;
+    }
   };
 
-  const finalize = () => {
-    if (done) return;
-    done = true;
-    clearParallel();
-    cancelDeckPanelOpenScroll = null;
+  const softFinalize = () => {
     const r = panel.getBoundingClientRect();
     const need = r.bottom - window.innerHeight + margin;
     if (need > 0.5) window.scrollBy({ top: need, behavior: 'auto' });
@@ -1023,37 +1040,55 @@ function scheduleScrollDeckPanelAfterOpen() {
 
   const onEndParallel = (e) => {
     if (e.target !== content || e.propertyName !== 'grid-template-rows') return;
-    finalize();
+    softFinalize();
   };
 
   const abort = () => {
-    if (done) return;
-    done = true;
-    clearParallel();
+    alive = false;
+    clearPending();
     cancelDeckPanelOpenScroll = null;
-  };
-
-  const tick = (now) => {
-    if (done) return;
-    const dtMs = Math.min(Math.max(now - lastFrameTs, 1), 48);
-    lastFrameTs = now;
-    const r = panel.getBoundingClientRect();
-    const need = r.bottom - window.innerHeight + margin;
-    if (need > 0.5) {
-      const budget = (MAX_SCROLL_VELOCITY_PPS * dtMs) / 1000;
-      const movePx = Math.min(need, budget);
-      window.scrollBy({ top: movePx, behavior: 'auto' });
-    }
-    if (now - start >= MAX_MS) {
-      finalize();
-      return;
-    }
-    rafId = requestAnimationFrame(tick);
   };
 
   cancelDeckPanelOpenScroll = abort;
   content.addEventListener('transitionend', onEndParallel);
-  rafId = requestAnimationFrame(tick);
+  fallbackId = window.setTimeout(() => {
+    softFinalize();
+    fallbackId = null;
+  }, 520);
+
+  const startSmoothScroll = () => {
+    if (!alive) return;
+    const fromY = window.scrollY;
+    const inner = panel.querySelector('.deck-panel__inner');
+    if (!inner) return;
+    const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    const expandChrome = rem * 0.85 * 2 + 1;
+    const closedBottomDoc = panel.getBoundingClientRect().bottom + window.scrollY;
+    const openBottomDoc = closedBottomDoc + inner.scrollHeight + expandChrome;
+    const limitDoc = window.scrollY + window.innerHeight - margin;
+    const delta = Math.max(0, openBottomDoc - limitDoc);
+    if (delta < 2) return;
+
+    const toY = fromY + delta;
+    const t0 = performance.now();
+
+    const tick = (now) => {
+      if (!alive) return;
+      const elapsed = now - t0;
+      const u = Math.min(1, elapsed / DURATION_MS);
+      const y = fromY + (toY - fromY) * easeDeckPanelGridRow(u);
+      window.scrollTo({ top: y, behavior: 'auto' });
+      if (u < 1) scrollAnimRaf = requestAnimationFrame(tick);
+      else scrollAnimRaf = null;
+    };
+    scrollAnimRaf = requestAnimationFrame(tick);
+  };
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      startSmoothScroll();
+    });
+  });
 }
 
 els.deckToggle?.addEventListener('click', () => {
@@ -1133,39 +1168,38 @@ function attachStudySwipe() {
   el.addEventListener('pointercancel', onStudySwipePointerUp);
 }
 
-function restoreFooterSyncLabel() {
-  els.btnForceSync.classList.remove('btn-footer-sync--success');
-  els.btnForceSync.removeAttribute('aria-label');
-  if (els.btnFooterSyncText) els.btnFooterSyncText.textContent = t('forceSync');
-}
+async function runCloudSyncFromTitle() {
+  const el = els.brandSyncTitle;
+  if (!el || el.classList.contains('brand-name--busy')) return;
+  if (els.viewStudy?.classList.contains('view--active')) return;
 
-els.btnForceSync.addEventListener('click', async () => {
-  if (footerSyncCheckTimer) {
-    clearTimeout(footerSyncCheckTimer);
-    footerSyncCheckTimer = null;
-  }
-  restoreFooterSyncLabel();
-  els.btnForceSync.disabled = true;
+  el.classList.add('brand-name--busy');
+  el.setAttribute('aria-busy', 'true');
   try {
     const r = await forceFullSyncFromSupabase();
-    if (r.ok && r.skippedStale) {
-      showToast(t('toastSyncStaleRetrying'));
-    } else if (r.ok) {
-      els.btnForceSync.classList.add('btn-footer-sync--success');
-      if (els.btnFooterSyncText) els.btnFooterSyncText.textContent = '✅';
-      els.btnForceSync.setAttribute('aria-label', t('footerSyncCompleteAria'));
-      footerSyncCheckTimer = setTimeout(() => {
-        restoreFooterSyncLabel();
-        footerSyncCheckTimer = null;
-      }, 1500);
-    } else if (r.reason === 'offline') showToast(t('toastOfflineCloud'));
+    if (r.ok) {
+      window.location.reload();
+      return;
+    }
+    if (r.reason === 'offline') showToast(t('toastOfflineCloud'));
     else if (r.detail) showToast(t('toastSyncFailedReason', { reason: r.detail }));
     else showToast(t('toastSyncFailed'));
   } finally {
-    els.btnForceSync.disabled = false;
+    el.classList.remove('brand-name--busy');
+    el.removeAttribute('aria-busy');
     renderDashboard();
   }
-});
+}
+
+/** @param {KeyboardEvent} e */
+function onBrandSyncTitleKeydown(e) {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  e.preventDefault();
+  void runCloudSyncFromTitle();
+}
+
+els.brandSyncTitle?.addEventListener('click', () => void runCloudSyncFromTitle());
+els.brandSyncTitle?.addEventListener('keydown', onBrandSyncTitleKeydown);
 els.btnExitStudy.addEventListener('click', () => {
   detachStudyKeyboard();
   queue = [];

@@ -10,7 +10,8 @@ export const strings = {
     'Tap "Repeat" to study cards that are due now in the selected group (Hard/Easy sets the next review time).',
   howtoLi3:
     'Progress syncs to the cloud under <strong>this browser\'s anonymous account</strong> (account line below in this panel). Another device uses a different id unless you add a shared sign-in later.',
-  howtoLi4: 'Use "Cloud sync" at the bottom if the device lacks cards.',
+  howtoLi4:
+    'Tap the <strong>LingoLift</strong> title above to pull from the cloud and refresh the page if this device is missing cards.',
   howtoLi5: 'Works offline — cards sync automatically when you reconnect.',
   howtoLi6:
     'In Supabase SQL, <code>count(*)</code> on <code>cards</code> counts every user\'s rows; the app only shows cards for the current account id.',
@@ -28,7 +29,7 @@ export const strings = {
   gradesTodayTitle:
     'Counts every Hard or Easy tap today, including extra passes through Repeat (can exceed deck size).',
   startReview: 'Repeat',
-  forceSync: 'Cloud sync',
+  brandSyncAria: 'Pull latest cards from the cloud and refresh the page',
   reviewHintEmptyDeck: 'Add your first card.',
   reviewHintNoCardsInGroup: 'No cards in this group.',
   reviewHintNoneToday: 'All done for today!',
@@ -80,7 +81,6 @@ export const strings = {
   toastCardAdded: 'Added.',
   toastEnterNewGroup: 'Enter a name for the new group.',
   alertDuplicateWord: 'Word already exists in this group.',
-  footerSyncCompleteAria: 'Sync complete',
   toastOfflineCloud: 'Offline.',
   toastSyncFailed: 'Sync failed.',
   toastSyncFailedReason: 'Sync failed: {reason}',
@@ -140,6 +140,12 @@ export function applyUiStrings() {
     const s = t(key);
     el.title = s;
     el.setAttribute('aria-label', s);
+  });
+
+  document.querySelectorAll('[data-i18n-aria]').forEach((el) => {
+    const key = el.getAttribute('data-i18n-aria');
+    if (!key) return;
+    el.setAttribute('aria-label', t(key));
   });
 
   const dash = document.getElementById('view-dashboard');

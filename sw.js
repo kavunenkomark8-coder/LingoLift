@@ -1,9 +1,9 @@
-const CACHE = 'lingolift-v67-deck-scroll-velocity';
+const CACHE = 'lingolift-v73-deck-scroll-smooth-ease';
 
 const ASSETS = [
   './',
   './index.html',
-  './css/styles.css?v=62-deck-scroll',
+  './css/styles.css?v=70-dashboard-grid-align',
   './js/app.js',
   './js/i18n.js',
   './js/data-store.js',
