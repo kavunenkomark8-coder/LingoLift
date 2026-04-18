@@ -1,7 +1,15 @@
 # LingoLift — project memory (for AI context)
 
-**Document version:** 21.10 (Repeat queue = due now only)  
-**App / Service Worker cache:** `lingolift-v60-repeat-due-queue` (`sw.js` → `CACHE = 'lingolift-v60-repeat-due-queue'`)
+**Document version:** 21.14 (My deck scroll velocity cap)  
+**App / Service Worker cache:** `lingolift-v67-deck-scroll-velocity` (`sw.js` → `CACHE = 'lingolift-v67-deck-scroll-velocity'`)
+
+**v21.14:** Deck-open **rAF** scroll uses a **px/sec** ceiling (**`68 * 60`**, i.e. same as **68px** per **60Hz** frame) instead of a fixed **px/frame** cap, so **120Hz+** desktops don’t chase the panel **twice as fast** in real time (which felt like teleporting). **`index.html`** **`app.js?v=67-deck-scroll-velocity`**. SW **`lingolift-v67-deck-scroll-velocity`**.
+
+**v21.13:** **rAF** deck-open scroll with a per-frame **~68px** cap toward the gap; final catch-up **> 0.5px**.
+
+**v21.12:** Opening **My deck** (unless **`prefers-reduced-motion: reduce`**) runs a **`requestAnimationFrame`** loop **in parallel** with the expand: each frame scrolls to close the gap under the panel bottom (tracks **`getBoundingClientRect`**). Stops on **`transitionend`** (**`grid-template-rows`**) or **580ms** cap, with a final catch-up. Reduced motion: single scroll after **`transitionend`** / timeout. Closing cancels pending rAF/listener. **`styles.css?v=62-deck-scroll`**.
+
+**v21.11:** **`#account-hint`** moved from **stats panel** into **Info** (**`.howto-inner`**, below the how-to list); **`howtoTitle`** string **Info** (was “How to use”). **`index.html`** **`app.js?v=61-info-account-hint`**. SW **`lingolift-v61-info-account-hint`**. Styles **`.howto-account-hint`**.
 
 **v21.10:** **`startReview`** builds the session queue from **`dueNowQueue(filtered)`**, not the full filtered pool — study progress (**words left**) matches the dashboard ratio **`due / pool`**. When **nothing is due**, **Repeat** is disabled and **`toastNothingDue`** covers edge taps. **`index.html`** **`app.js?v=60-repeat-due-queue`**. SW **`lingolift-v60-repeat-due-queue`**. Supersedes **v20.1** “full pool” Repeat behavior.
 
@@ -53,7 +61,7 @@
 
 **v19.1:** **My deck** and **New group** row use the same disclosure pattern as **How to use**: `max-height` + opacity transitions (not `hidden`); **How to** panel gets a light open-state border. **`.select-lang`** uses slightly longer easing on border/shadow/background.
 
-**v19:** **Word groups** (`group_label` in Supabase, `groupLabel` on client cards). Duplicate words are allowed in **different** groups only (`isWordDuplicateInGroup`). **Group for review** (`#select-study-group`) filters the study pool and dashboard counts; choice persisted in `localStorage` key `lingolift-study-group-filter` (`''` = all groups, `__none__` = ungrouped only). **v21.10:** **Repeat** uses **due** cards in that filter only. **Add card** form: group `<select>` (`#select-add-group`) with **New group…** (`__new__`) + `#input-new-group-name`. **My deck** collapsible panel: search, group filter, list with **Edit** / **Delete**; edits use `updateCardFields`, deletes use `deleteCard` with outbox ops `update_fields` and `delete`. **Language pair** for GTX (`#select-lang-source` / `#select-lang-target`) persisted in `localStorage` key `lingolift-lang-pair`. **`<datalist id="datalist-words">`** on `#input-word` suggests existing words in the **currently selected add-group** (including typed new group name). **Study swipe** (touch only): after answer is shown, horizontal swipe on `#study-card` triggers Hard (left) / Easy (right); disabled when `prefers-reduced-motion: reduce`. **SQL:** new installs include `group_label` in [sql/cards.sql](sql/cards.sql); existing DBs run [sql/add_group_label.sql](sql/add_group_label.sql). RLS unchanged (`user_id` policies already cover update/delete).
+**v19:** **Word groups** (`group_label` in Supabase, `groupLabel` on client cards). Duplicate words are allowed in **different** groups only (`isWordDuplicateInGroup`). **Group for review** (`#select-study-group`) filters the study pool and dashboard counts; choice persisted in `localStorage` key `lingolift-study-group-filter` (`''` = all groups, `__none__` = ungrouped only). **v21.10:** **Repeat** uses **due** cards in that filter only. **Add card** form: group `<select>` (`#select-add-group`) with **New group…** (`__new__`) + `#input-new-group-name`. **My deck** collapsible panel: search, group filter, list with **Edit** / **Delete**; edits use `updateCardFields`, deletes use `deleteCard` with outbox ops `update_fields` and `delete`. **v21.14:** on open, **rAF-tracked `scrollBy`** (velocity cap; see **v21.14** above) in parallel with deck expand. **Language pair** for GTX (`#select-lang-source` / `#select-lang-target`) persisted in `localStorage` key `lingolift-lang-pair`. **`<datalist id="datalist-words">`** on `#input-word` suggests existing words in the **currently selected add-group** (including typed new group name). **Study swipe** (touch only): after answer is shown, horizontal swipe on `#study-card` triggers Hard (left) / Easy (right); disabled when `prefers-reduced-motion: reduce`. **SQL:** new installs include `group_label` in [sql/cards.sql](sql/cards.sql); existing DBs run [sql/add_group_label.sql](sql/add_group_label.sql). RLS unchanged (`user_id` policies already cover update/delete).
 
 **v18 (SW hard reset):** Cache name bumps; **`install`** calls **`self.skipWaiting()`** first; **`activate`** deletes **all** caches whose name is not the current **`CACHE`**, then **`clients.claim()`**.
 
@@ -119,7 +127,7 @@
 ## UI rules (high level)
 
 - **Theme:** Dark UI; **`--violet` / `--violet-glow`**, Outfit + JetBrains Mono.
-- **Copy:** Tagline **Spaced repetition**; primary action **Repeat**; footer **Cloud sync**; session end toast **All done for today!**; how-to bullets in `strings` (`howtoLi1`–`howtoLi9`).
+- **Copy:** Tagline **Spaced repetition**; primary action **Repeat**; footer **Cloud sync**; session end toast **All done for today!**; **Info** panel bullets in `strings` (`howtoLi1`–`howtoLi9`).
 - **Footer Cloud Sync:** Larger label font; success state **✅ only** briefly (`btn-footer-sync--success`).
 
 ---
@@ -135,9 +143,9 @@
 
 ---
 
-## How-to panel
+## How-to panel (Info)
 
-- A **button** `#howto-toggle` toggles `.howto-panel--open` on `.howto-panel`. Content `#howto-content` uses **`max-height`** + **opacity** on `.howto-expand` and fade/slide on `.howto-inner` for open **and** close. `aria-expanded` / `aria-hidden` updated in `app.js`. Hidden when **`app--study`**.
+- UI label **Info** (`howtoTitle`). A **button** `#howto-toggle` toggles `.howto-panel--open` on `.howto-panel`. Content `#howto-content` uses **`max-height`** + **opacity** on `.howto-expand` and fade/slide on `.howto-inner` for open **and** close. **`#account-hint`** (sync account + SQL note) lives **below** the bullet list inside **`.howto-inner`**. `aria-expanded` / `aria-hidden` updated in `app.js`. Hidden when **`app--study`**.
 
 ---
 

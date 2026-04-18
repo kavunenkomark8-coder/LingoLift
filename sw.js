@@ -1,9 +1,9 @@
-const CACHE = 'lingolift-v60-repeat-due-queue';
+const CACHE = 'lingolift-v67-deck-scroll-velocity';
 
 const ASSETS = [
   './',
   './index.html',
-  './css/styles.css?v=55-progress-grades-line',
+  './css/styles.css?v=62-deck-scroll',
   './js/app.js',
   './js/i18n.js',
   './js/data-store.js',

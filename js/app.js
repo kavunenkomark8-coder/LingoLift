@@ -928,13 +928,148 @@ els.inputNewGroupName?.addEventListener('input', () => {
   refreshWordDatalist();
 });
 
+/** Cancel pending deck open scroll (e.g. user closed the panel before animation finished). */
+let cancelDeckPanelOpenScroll = null;
+
+/**
+ * Scroll the window while My deck opens: each rAF closes part of the gap under the panel bottom.
+ * Uses a px/sec cap (not px/frame) so high-refresh desktops don’t chase twice as fast as ~60Hz phones.
+ * Reduced-motion: one scroll after transition settles.
+ */
+function scheduleScrollDeckPanelAfterOpen() {
+  cancelDeckPanelOpenScroll?.();
+  cancelDeckPanelOpenScroll = null;
+
+  const panel = els.deckPanel;
+  const content = els.deckContent;
+  if (!panel || !content) return;
+
+  const margin = 24;
+  const reduceMotion =
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  if (reduceMotion) {
+    let done = false;
+    /** @type {ReturnType<typeof setTimeout> | null} */
+    let fallbackId = null;
+
+    const clearPending = () => {
+      content.removeEventListener('transitionend', onEndReduce);
+      if (fallbackId != null) {
+        window.clearTimeout(fallbackId);
+        fallbackId = null;
+      }
+    };
+
+    const abort = () => {
+      if (done) return;
+      done = true;
+      clearPending();
+      cancelDeckPanelOpenScroll = null;
+    };
+
+    const finish = () => {
+      if (done) return;
+      done = true;
+      clearPending();
+      cancelDeckPanelOpenScroll = null;
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          const r = panel.getBoundingClientRect();
+          const need = r.bottom - window.innerHeight + margin;
+          if (need > 0) window.scrollTo({ top: window.scrollY + need, behavior: 'auto' });
+        });
+      });
+    };
+
+    const onEndReduce = (e) => {
+      if (e.target !== content || e.propertyName !== 'grid-template-rows') return;
+      finish();
+    };
+
+    cancelDeckPanelOpenScroll = abort;
+    content.addEventListener('transitionend', onEndReduce);
+    fallbackId = window.setTimeout(finish, 560);
+    return;
+  }
+
+  let done = false;
+  /** @type {number | null} */
+  let rafId = null;
+  const start = performance.now();
+  const MAX_MS = 580;
+  /** Same perceived cap as ~68px per 60Hz frame, but stable on 120Hz+ displays. */
+  const MAX_SCROLL_VELOCITY_PPS = 68 * 60;
+  let lastFrameTs = start;
+
+  const clearParallel = () => {
+    if (rafId != null) {
+      cancelAnimationFrame(rafId);
+      rafId = null;
+    }
+    content.removeEventListener('transitionend', onEndParallel);
+  };
+
+  const finalize = () => {
+    if (done) return;
+    done = true;
+    clearParallel();
+    cancelDeckPanelOpenScroll = null;
+    const r = panel.getBoundingClientRect();
+    const need = r.bottom - window.innerHeight + margin;
+    if (need > 0.5) window.scrollBy({ top: need, behavior: 'auto' });
+  };
+
+  const onEndParallel = (e) => {
+    if (e.target !== content || e.propertyName !== 'grid-template-rows') return;
+    finalize();
+  };
+
+  const abort = () => {
+    if (done) return;
+    done = true;
+    clearParallel();
+    cancelDeckPanelOpenScroll = null;
+  };
+
+  const tick = (now) => {
+    if (done) return;
+    const dtMs = Math.min(Math.max(now - lastFrameTs, 1), 48);
+    lastFrameTs = now;
+    const r = panel.getBoundingClientRect();
+    const need = r.bottom - window.innerHeight + margin;
+    if (need > 0.5) {
+      const budget = (MAX_SCROLL_VELOCITY_PPS * dtMs) / 1000;
+      const movePx = Math.min(need, budget);
+      window.scrollBy({ top: movePx, behavior: 'auto' });
+    }
+    if (now - start >= MAX_MS) {
+      finalize();
+      return;
+    }
+    rafId = requestAnimationFrame(tick);
+  };
+
+  cancelDeckPanelOpenScroll = abort;
+  content.addEventListener('transitionend', onEndParallel);
+  rafId = requestAnimationFrame(tick);
+}
+
 els.deckToggle?.addEventListener('click', () => {
   if (!els.deckContent || !els.deckToggle || !els.deckPanel) return;
   const willOpen = !els.deckPanel.classList.contains('deck-panel--open');
+  if (!willOpen) {
+    cancelDeckPanelOpenScroll?.();
+    cancelDeckPanelOpenScroll = null;
+  }
   els.deckPanel.classList.toggle('deck-panel--open', willOpen);
   els.deckContent.setAttribute('aria-hidden', willOpen ? 'false' : 'true');
   els.deckToggle.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
-  if (willOpen) renderDeckList();
+  if (willOpen) {
+    renderDeckList();
+    scheduleScrollDeckPanelAfterOpen();
+  }
 });
 
 els.deckSearch?.addEventListener('input', () => {

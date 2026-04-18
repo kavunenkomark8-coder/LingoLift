@@ -16,7 +16,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/styles.css?v=55-progress-grades-line" />
+  <link rel="stylesheet" href="css/styles.css?v=62-deck-scroll" />
   <script type="importmap">
     {
       "imports": {
@@ -42,7 +42,7 @@
     </div>
 
     <div class="panel howto-panel howto-panel--compact">
-      <button type="button" class="howto-summary" id="howto-toggle" aria-expanded="false" aria-controls="howto-content" data-i18n="howtoTitle">How to use</button>
+      <button type="button" class="howto-summary" id="howto-toggle" aria-expanded="false" aria-controls="howto-content" data-i18n="howtoTitle">Info</button>
       <div id="howto-content" class="howto-expand" role="region" aria-labelledby="howto-toggle" aria-hidden="true">
         <div class="howto-expand__surf">
           <div class="howto-inner">
@@ -57,6 +57,7 @@
             <li data-i18n-html="howtoLi8"></li>
             <li data-i18n-html="howtoLi9" class="howto-li--mobile-swipe"></li>
           </ul>
+          <p id="account-hint" class="howto-account-hint stats-line stats-line--sub" hidden></p>
           </div>
         </div>
       </div>
@@ -190,7 +191,6 @@
 
         <div class="panel stats-panel">
           <p class="stats-line stats-line--single-line"><span id="stat-total">0</span> <span data-i18n="statsDeckSuffix">cards in deck</span></p>
-          <p id="account-hint" class="stats-line stats-line--sub" hidden></p>
         </div>
 
         <div class="panel deck-panel" id="deck-panel">
@@ -263,6 +263,6 @@
     <p id="study-keys-hint" class="visually-hidden" data-i18n="studyDesktopKeysHint"></p>
   </div>
   <datalist id="datalist-words"></datalist>
-  <script src="js/app.js?v=60-repeat-due-queue" type="module"></script>
+  <script src="js/app.js?v=67-deck-scroll-velocity" type="module"></script>
 </body>
 </html>

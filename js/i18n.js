@@ -4,12 +4,12 @@
 
 export const strings = {
   tagline: 'Spaced repetition',
-  howtoTitle: 'How to use',
+  howtoTitle: 'Info',
   howtoLi1: 'Add words + translation.',
   howtoLi2:
     'Tap "Repeat" to study cards that are due now in the selected group (Hard/Easy sets the next review time).',
   howtoLi3:
-    'Progress syncs to the cloud under <strong>this browser\'s anonymous account</strong> (see account id on the dashboard). Another device uses a different id unless you add a shared sign-in later.',
+    'Progress syncs to the cloud under <strong>this browser\'s anonymous account</strong> (account line below in this panel). Another device uses a different id unless you add a shared sign-in later.',
   howtoLi4: 'Use "Cloud sync" at the bottom if the device lacks cards.',
   howtoLi5: 'Works offline — cards sync automatically when you reconnect.',
   howtoLi6:

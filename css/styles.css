@@ -460,6 +460,10 @@ body {
     box-shadow 0.38s cubic-bezier(0.33, 1, 0.68, 1);
 }
 
+#deck-panel {
+  scroll-margin-bottom: 1.25rem;
+}
+
 .deck-panel--open {
   border-color: rgba(168, 85, 247, 0.32);
   box-shadow:
@@ -1241,6 +1245,12 @@ body {
 .howto-expand__surf {
   min-height: 0;
   overflow: hidden;
+}
+
+.howto-account-hint {
+  margin-top: 0.65rem;
+  margin-bottom: 0;
+  text-align: left;
 }
 
 .howto-inner {
