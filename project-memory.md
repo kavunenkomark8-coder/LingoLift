@@ -1,7 +1,17 @@
 # LingoLift — project memory (for AI context)
 
-**Document version:** 21.20 (My deck smooth scroll matched to expand)  
-**App / Service Worker cache:** `lingolift-v73-deck-scroll-smooth-ease` (`sw.js` → `CACHE = 'lingolift-v73-deck-scroll-smooth-ease'`)
+**Document version:** 21.25 (My deck scroll needLive + frozen limitDoc)  
+**App / Service Worker cache:** `lingolift-v78-deck-scroll-need-live` (`sw.js` → `CACHE = 'lingolift-v78-deck-scroll-need-live'`)
+
+**v21.25:** Parallel deck-open scroll uses **`parallelDelta = max(estimate, needLive)`** (live viewport gap after 2× rAF) and **`limitDoc`** from **`scrollYWhenClosed` + innerHeight** paired with **`closedBottomDoc`** at click. Skip parallel only if **`parallelDelta < 0.5`**. **`v21.24`** **`scrollFinalized`** + smooth remainder unchanged. **`app.js?v=78-deck-scroll-need-live`**, SW **`lingolift-v78-deck-scroll-need-live`**.
+
+**v21.24:** **My deck** remainder: **`scrollFinalized`** + **`scrollTo(..., behavior: 'smooth')`** (no double **`scrollBy`**).
+
+**v21.23:** **My deck** open scroll: **`closedBottomDoc`** snapshot before **`deck-panel--open`** (see **v21.23**).
+
+**v21.22:** **`howto-hero.svg`** bottom gradient no longer uses near-black **`#0a0a12`**; added lower violet wash (**`glow2`** anchored at bottom). **`.howto-hero`**: **`line-height: 0`**, fallback **`background`**, **`object-fit: fill`** on img so the strip fills rounded corners without a gap. **`styles.css?v=75-howto-hero-fill`**, SW **`lingolift-v75-howto-hero-fill`**.
+
+**v21.21:** Under **Info** (**.`howto-summary`**): **`.howto-hero`** full-bleed strip (**`width: calc(100% + 1.5rem)`**, negative side margins) with **`icons/howto-hero.svg`**; height **`calc(3 * var(--howto-bar-h))`** where **`--howto-bar-h: 2.85rem`** on **`.howto-panel--compact`** and **`min-height`** on the summary. Decorative **`alt=""`**. SW precaches **`./icons/howto-hero.svg`**.
 
 **v21.20:** **My deck** open: **one** **`scrollTo`** animation over **460ms** with **`cubic-bezier(0.33, 1, 0.68, 1)`** (same as **`grid-template-rows`**), from estimated **`inner.scrollHeight` + open chrome** ( **`0.85rem`×2 + 1px** ); **`transitionend`** / timeout only nudges remainder. Replaces per-frame Δ tracking. **`index.html`** **`app.js?v=73-deck-scroll-smooth-ease`**. SW **`lingolift-v73-deck-scroll-smooth-ease`**.
 
@@ -73,7 +83,7 @@
 
 **v19.1:** **My deck** and **New group** row use the same disclosure pattern as **How to use**: `max-height` + opacity transitions (not `hidden`); **How to** panel gets a light open-state border. **`.select-lang`** uses slightly longer easing on border/shadow/background.
 
-**v19:** **Word groups** (`group_label` in Supabase, `groupLabel` on client cards). Duplicate words are allowed in **different** groups only (`isWordDuplicateInGroup`). **Group for review** (`#select-study-group`) filters the study pool and dashboard counts; choice persisted in `localStorage` key `lingolift-study-group-filter` (`''` = all groups, `__none__` = ungrouped only). **v21.10:** **Repeat** uses **due** cards in that filter only. **Add card** form: group `<select>` (`#select-add-group`) with **New group…** (`__new__`) + `#input-new-group-name`. **My deck** collapsible panel: search, group filter, list with **Edit** / **Delete**; edits use `updateCardFields`, deletes use `deleteCard` with outbox ops `update_fields` and `delete`. **v21.20:** on open, **460ms eased `scrollTo`** aligned with deck **grid** expand (see **v21.20** above). **Language pair** for GTX (`#select-lang-source` / `#select-lang-target`) persisted in `localStorage` key `lingolift-lang-pair`. **`<datalist id="datalist-words">`** on `#input-word` suggests existing words in the **currently selected add-group** (including typed new group name). **Study swipe** (touch only): after answer is shown, horizontal swipe on `#study-card` triggers Hard (left) / Easy (right); disabled when `prefers-reduced-motion: reduce`. **SQL:** new installs include `group_label` in [sql/cards.sql](sql/cards.sql); existing DBs run [sql/add_group_label.sql](sql/add_group_label.sql). RLS unchanged (`user_id` policies already cover update/delete).
+**v19:** **Word groups** (`group_label` in Supabase, `groupLabel` on client cards). Duplicate words are allowed in **different** groups only (`isWordDuplicateInGroup`). **Group for review** (`#select-study-group`) filters the study pool and dashboard counts; choice persisted in `localStorage` key `lingolift-study-group-filter` (`''` = all groups, `__none__` = ungrouped only). **v21.10:** **Repeat** uses **due** cards in that filter only. **Add card** form: group `<select>` (`#select-add-group`) with **New group…** (`__new__`) + `#input-new-group-name`. **My deck** collapsible panel: search, group filter, list with **Edit** / **Delete**; edits use `updateCardFields`, deletes use `deleteCard` with outbox ops `update_fields` and `delete`. **v21.25:** on open, parallel **`max(estimate, needLive)`**; **smooth** finalize once (**v21.24**–**v21.25**). **Language pair** for GTX (`#select-lang-source` / `#select-lang-target`) persisted in `localStorage` key `lingolift-lang-pair`. **`<datalist id="datalist-words">`** on `#input-word` suggests existing words in the **currently selected add-group** (including typed new group name). **Study swipe** (touch only): after answer is shown, horizontal swipe on `#study-card` triggers Hard (left) / Easy (right); disabled when `prefers-reduced-motion: reduce`. **SQL:** new installs include `group_label` in [sql/cards.sql](sql/cards.sql); existing DBs run [sql/add_group_label.sql](sql/add_group_label.sql). RLS unchanged (`user_id` policies already cover update/delete).
 
 **v18 (SW hard reset):** Cache name bumps; **`install`** calls **`self.skipWaiting()`** first; **`activate`** deletes **all** caches whose name is not the current **`CACHE`**, then **`clients.claim()`**.
 
@@ -156,7 +166,7 @@
 
 ## How-to panel (Info)
 
-- UI label **Info** (`howtoTitle`). A **button** `#howto-toggle` toggles `.howto-panel--open` on `.howto-panel`. Content `#howto-content` uses **`max-height`** + **opacity** on `.howto-expand` and fade/slide on `.howto-inner` for open **and** close. **`#account-hint`** (sync account + SQL note) lives **below** the bullet list inside **`.howto-inner`**. `aria-expanded` / `aria-hidden` updated in `app.js`. Hidden when **`app--study`**.
+- UI label **Info** (`howtoTitle`). A **button** `#howto-toggle` toggles `.howto-panel--open` on `.howto-panel`. **v21.21:** **`.howto-hero`** ( **`icons/howto-hero.svg`** ) sits **between** the button and **`#howto-content`**, full-bleed in the panel, height **3×** **`--howto-bar-h`**. Content `#howto-content` uses **`max-height`** + **opacity** on `.howto-expand` and fade/slide on `.howto-inner` for open **and** close. **`#account-hint`** (sync account + SQL note) lives **below** the bullet list inside **`.howto-inner`**. `aria-expanded` / `aria-hidden` updated in `app.js`. Hidden when **`app--study`**.
 
 ---
 

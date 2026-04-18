@@ -16,7 +16,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/styles.css?v=70-dashboard-grid-align" />
+  <link rel="stylesheet" href="css/styles.css?v=75-howto-hero-fill" />
   <script type="importmap">
     {
       "imports": {
@@ -51,6 +51,9 @@
 
     <div class="panel howto-panel howto-panel--compact">
       <button type="button" class="howto-summary" id="howto-toggle" aria-expanded="false" aria-controls="howto-content" data-i18n="howtoTitle">Info</button>
+      <div class="howto-hero" aria-hidden="true">
+        <img class="howto-hero__img" src="icons/howto-hero.svg" alt="" width="1200" height="360" decoding="async" fetchpriority="low" />
+      </div>
       <div id="howto-content" class="howto-expand" role="region" aria-labelledby="howto-toggle" aria-hidden="true">
         <div class="howto-expand__surf">
           <div class="howto-inner">
@@ -265,6 +268,6 @@
     <p id="study-keys-hint" class="visually-hidden" data-i18n="studyDesktopKeysHint"></p>
   </div>
   <datalist id="datalist-words"></datalist>
-  <script src="js/app.js?v=73-deck-scroll-smooth-ease" type="module"></script>
+  <script src="js/app.js?v=78-deck-scroll-need-live" type="module"></script>
 </body>
 </html>

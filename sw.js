@@ -1,9 +1,9 @@
-const CACHE = 'lingolift-v73-deck-scroll-smooth-ease';
+const CACHE = 'lingolift-v78-deck-scroll-need-live';
 
 const ASSETS = [
   './',
   './index.html',
-  './css/styles.css?v=70-dashboard-grid-align',
+  './css/styles.css?v=75-howto-hero-fill',
   './js/app.js',
   './js/i18n.js',
   './js/data-store.js',
@@ -11,6 +11,7 @@ const ASSETS = [
   './manifest.json',
   './android-chrome-192x192.png',
   './android-chrome-512x512.png',
+  './icons/howto-hero.svg',
 ];
 
 self.addEventListener('install', (e) => {

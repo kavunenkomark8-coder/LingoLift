@@ -950,12 +950,17 @@ function easeDeckPanelGridRow(t) {
 }
 
 /**
- * My deck open: one smooth `scrollTo` over **460ms** with the same cubic-bezier as the panel height
- * transition, so the page moves down in parallel with the expanding block. Estimate uses
- * `inner.scrollHeight` + open chrome (0.85rem × 2); `transitionend` applies a small remainder.
- * Reduced-motion: single scroll after transition.
+ * My deck open: optional **460ms** eased `scrollTo` parallel to grid expand when estimate **`delta`**
+ * is meaningful. If estimate is low (**`delta < 2`**), the parallel phase is skipped — previously
+ * **`softFinalize`** still ran with **`scrollBy` `auto`**, which looked like a teleport; remainder
+ * is now **one** **`scrollTo(..., behavior: 'smooth')`** after **`grid-template-rows`** ends (or
+ * timeout). **`closedBottomDoc`**: panel bottom in document space while still closed.
+ * **`scrollYWhenClosed`**: `window.scrollY` at that same moment so **`limitDoc`** matches the click-time viewport.
+ * Reduced-motion: single scroll after transition (`auto`).
+ * @param {number} [closedBottomDoc]
+ * @param {number} [scrollYWhenClosed]
  */
-function scheduleScrollDeckPanelAfterOpen() {
+function scheduleScrollDeckPanelAfterOpen(closedBottomDoc, scrollYWhenClosed) {
   cancelDeckPanelOpenScroll?.();
   cancelDeckPanelOpenScroll = null;
 
@@ -1019,6 +1024,7 @@ function scheduleScrollDeckPanelAfterOpen() {
   /** @type {ReturnType<typeof setTimeout> | null} */
   let fallbackId = null;
   let alive = true;
+  let scrollFinalized = false;
 
   const clearPending = () => {
     if (scrollAnimRaf != null) {
@@ -1033,9 +1039,17 @@ function scheduleScrollDeckPanelAfterOpen() {
   };
 
   const softFinalize = () => {
+    if (scrollFinalized) return;
+    scrollFinalized = true;
+    if (fallbackId != null) {
+      window.clearTimeout(fallbackId);
+      fallbackId = null;
+    }
     const r = panel.getBoundingClientRect();
     const need = r.bottom - window.innerHeight + margin;
-    if (need > 0.5) window.scrollBy({ top: need, behavior: 'auto' });
+    if (need > 0.5) {
+      window.scrollTo({ top: window.scrollY + need, behavior: 'smooth' });
+    }
   };
 
   const onEndParallel = (e) => {
@@ -1053,7 +1067,6 @@ function scheduleScrollDeckPanelAfterOpen() {
   content.addEventListener('transitionend', onEndParallel);
   fallbackId = window.setTimeout(() => {
     softFinalize();
-    fallbackId = null;
   }, 520);
 
   const startSmoothScroll = () => {
@@ -1063,13 +1076,26 @@ function scheduleScrollDeckPanelAfterOpen() {
     if (!inner) return;
     const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
     const expandChrome = rem * 0.85 * 2 + 1;
-    const closedBottomDoc = panel.getBoundingClientRect().bottom + window.scrollY;
-    const openBottomDoc = closedBottomDoc + inner.scrollHeight + expandChrome;
-    const limitDoc = window.scrollY + window.innerHeight - margin;
+    const fullGrowth = inner.scrollHeight + expandChrome;
+    const expandHNow = content.getBoundingClientRect().height;
+    const measuredBottomDoc = panel.getBoundingClientRect().bottom + window.scrollY;
+    const closedDoc =
+      typeof closedBottomDoc === 'number'
+        ? closedBottomDoc
+        : measuredBottomDoc - Math.min(expandHNow, fullGrowth);
+    const openBottomDoc = closedDoc + fullGrowth;
+    const limitDoc =
+      typeof scrollYWhenClosed === 'number'
+        ? scrollYWhenClosed + window.innerHeight - margin
+        : window.scrollY + window.innerHeight - margin;
     const delta = Math.max(0, openBottomDoc - limitDoc);
-    if (delta < 2) return;
+    const rLive = panel.getBoundingClientRect();
+    const needLive = Math.max(0, rLive.bottom - window.innerHeight + margin);
+    const parallelDelta = Math.max(delta, needLive);
+    /* Skip parallel only when both estimate and live gap are negligible; `softFinalize` smooths the rest. */
+    if (parallelDelta < 0.5) return;
 
-    const toY = fromY + delta;
+    const toY = fromY + parallelDelta;
     const t0 = performance.now();
 
     const tick = (now) => {
@@ -1098,12 +1124,20 @@ els.deckToggle?.addEventListener('click', () => {
     cancelDeckPanelOpenScroll?.();
     cancelDeckPanelOpenScroll = null;
   }
+  /** Document Y of panel bottom before opening — avoids double-counting expand height after class toggle. */
+  let deckClosedBottomDoc;
+  /** `scrollY` paired with that snapshot for consistent `limitDoc` in scroll math. */
+  let scrollYWhenClosed;
+  if (willOpen) {
+    scrollYWhenClosed = window.scrollY;
+    deckClosedBottomDoc = els.deckPanel.getBoundingClientRect().bottom + scrollYWhenClosed;
+  }
   els.deckPanel.classList.toggle('deck-panel--open', willOpen);
   els.deckContent.setAttribute('aria-hidden', willOpen ? 'false' : 'true');
   els.deckToggle.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
   if (willOpen) {
     renderDeckList();
-    scheduleScrollDeckPanelAfterOpen();
+    scheduleScrollDeckPanelAfterOpen(deckClosedBottomDoc, scrollYWhenClosed);
   }
 });
 

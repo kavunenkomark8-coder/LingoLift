@@ -1166,7 +1166,29 @@ body {
 }
 
 .howto-panel--compact {
+  --howto-bar-h: 2.85rem;
   box-shadow: none;
+}
+
+.howto-hero {
+  width: calc(100% + 1.5rem);
+  margin-left: -0.75rem;
+  margin-right: -0.75rem;
+  margin-bottom: 0.35rem;
+  height: calc(3 * var(--howto-bar-h));
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  flex-shrink: 0;
+  line-height: 0;
+  background: #1e1530;
+}
+
+.howto-hero__img {
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  object-position: center;
+  display: block;
 }
 
 .howto-panel--compact.howto-panel--open {
@@ -1178,6 +1200,7 @@ body {
   width: 100%;
   margin: 0;
   padding: 0;
+  min-height: var(--howto-bar-h, 2.85rem);
   font-family: var(--font);
   font-size: 0.78rem;
   font-weight: 500;
