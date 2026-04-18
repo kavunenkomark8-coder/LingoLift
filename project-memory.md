@@ -1,9 +1,11 @@
 # LingoLift — project memory (for AI context)
 
-**Document version:** 21.25 (My deck scroll needLive + frozen limitDoc)  
-**App / Service Worker cache:** `lingolift-v78-deck-scroll-need-live` (`sw.js` → `CACHE = 'lingolift-v78-deck-scroll-need-live'`)
+**Document version:** 21.26 (Remove Info howto-hero image)  
+**App / Service Worker cache:** `lingolift-v79-no-howto-hero` (`sw.js` → `CACHE = 'lingolift-v79-no-howto-hero'`)
 
-**v21.25:** Parallel deck-open scroll uses **`parallelDelta = max(estimate, needLive)`** (live viewport gap after 2× rAF) and **`limitDoc`** from **`scrollYWhenClosed` + innerHeight** paired with **`closedBottomDoc`** at click. Skip parallel only if **`parallelDelta < 0.5`**. **`v21.24`** **`scrollFinalized`** + smooth remainder unchanged. **`app.js?v=78-deck-scroll-need-live`**, SW **`lingolift-v78-deck-scroll-need-live`**.
+**v21.26:** **Info** panel: removed **`.howto-hero`** strip and **`icons/howto-hero.svg`** (no decorative image between toggle and content). **`styles.css?v=79-no-howto-hero`**, SW **`lingolift-v79-no-howto-hero`**. Historical **v21.21**–**v21.22** hero notes remain for archive only.
+
+**v21.25:** Parallel deck-open scroll uses **`parallelDelta = max(estimate, needLive)`** (live viewport gap after 2× rAF) and **`limitDoc`** from **`scrollYWhenClosed` + innerHeight** paired with **`closedBottomDoc`** at click. Skip parallel only if **`parallelDelta < 0.5`**. **`v21.24`** **`scrollFinalized`** + smooth remainder unchanged. **`app.js?v=78-deck-scroll-need-live`**.
 
 **v21.24:** **My deck** remainder: **`scrollFinalized`** + **`scrollTo(..., behavior: 'smooth')`** (no double **`scrollBy`**).
 
@@ -166,7 +168,7 @@
 
 ## How-to panel (Info)
 
-- UI label **Info** (`howtoTitle`). A **button** `#howto-toggle` toggles `.howto-panel--open` on `.howto-panel`. **v21.21:** **`.howto-hero`** ( **`icons/howto-hero.svg`** ) sits **between** the button and **`#howto-content`**, full-bleed in the panel, height **3×** **`--howto-bar-h`**. Content `#howto-content` uses **`max-height`** + **opacity** on `.howto-expand` and fade/slide on `.howto-inner` for open **and** close. **`#account-hint`** (sync account + SQL note) lives **below** the bullet list inside **`.howto-inner`**. `aria-expanded` / `aria-hidden` updated in `app.js`. Hidden when **`app--study`**.
+- UI label **Info** (`howtoTitle`). A **button** `#howto-toggle` toggles `.howto-panel--open` on `.howto-panel`. Content `#howto-content` follows the button directly (**v21.26:** no hero image). **`max-height`** + **opacity** on `.howto-expand` and fade/slide on `.howto-inner` for open **and** close. **`#account-hint`** (sync account + SQL note) lives **below** the bullet list inside **`.howto-inner`**. `aria-expanded` / `aria-hidden` updated in `app.js`. Hidden when **`app--study`**.
 
 ---
 
