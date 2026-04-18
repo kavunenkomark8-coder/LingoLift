@@ -6,7 +6,8 @@ export const strings = {
   tagline: 'Spaced repetition',
   howtoTitle: 'How to use',
   howtoLi1: 'Add words + translation.',
-  howtoLi2: 'Tap "Repeat" to run through the whole filtered set (spaced repetition on each answer).',
+  howtoLi2:
+    'Tap "Repeat" to study cards that are due now in the selected group (Hard/Easy sets the next review time).',
   howtoLi3:
     'Progress syncs to the cloud under <strong>this browser\'s anonymous account</strong> (see account id on the dashboard). Another device uses a different id unless you add a shared sign-in later.',
   howtoLi4: 'Use "Cloud sync" at the bottom if the device lacks cards.',
@@ -32,7 +33,7 @@ export const strings = {
   reviewHintNoCardsInGroup: 'No cards in this group.',
   reviewHintNoneToday: 'All done for today!',
   reviewHintFullPool:
-    'Nothing due right now in this group. Repeat still runs every card (Hard schedules ~15 min ahead).',
+    'Nothing due right now in this group. Come back when times are up (e.g. after a Hard break).',
   addCardTitle: 'Add card',
   fieldStudyGroup: 'Group for review',
   fieldCardGroup: 'Group',
@@ -75,6 +76,7 @@ export const strings = {
   syncError: 'Sync error · tap to retry',
   toastSessionComplete: 'All done for today!',
   toastNoCardsDue: 'No cards in this review scope.',
+  toastNothingDue: 'Nothing due right now in this group.',
   toastCardAdded: 'Added.',
   toastEnterNewGroup: 'Enter a name for the new group.',
   alertDuplicateWord: 'Word already exists in this group.',

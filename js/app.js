@@ -660,7 +660,7 @@ function renderDashboard() {
     els.btnStartReview.disabled = true;
   } else if (dueCount === 0) {
     els.reviewHint.textContent = t('reviewHintFullPool');
-    els.btnStartReview.disabled = false;
+    els.btnStartReview.disabled = true;
   } else {
     els.reviewHint.textContent = '';
     els.btnStartReview.disabled = false;
@@ -797,7 +797,12 @@ function startReview() {
     showToast(t('toastNoCardsDue'));
     return;
   }
-  queue = filtered.slice();
+  const due = dueNowQueue(filtered);
+  if (due.length === 0) {
+    showToast(t('toastNothingDue'));
+    return;
+  }
+  queue = due.slice();
   shuffleInPlace(queue);
   queueIndex = 0;
   setStudyChromeActive(true);

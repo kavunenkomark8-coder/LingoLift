@@ -1,7 +1,9 @@
 # LingoLift — project memory (for AI context)
 
-**Document version:** 21.8 (Supabase pick: global cannot override with YOUR_*)  
-**App / Service Worker cache:** `lingolift-v59-supabase-pick` (`sw.js` → `CACHE = 'lingolift-v59-supabase-pick'`)
+**Document version:** 21.10 (Repeat queue = due now only)  
+**App / Service Worker cache:** `lingolift-v60-repeat-due-queue` (`sw.js` → `CACHE = 'lingolift-v60-repeat-due-queue'`)
+
+**v21.10:** **`startReview`** builds the session queue from **`dueNowQueue(filtered)`**, not the full filtered pool — study progress (**words left**) matches the dashboard ratio **`due / pool`**. When **nothing is due**, **Repeat** is disabled and **`toastNothingDue`** covers edge taps. **`index.html`** **`app.js?v=60-repeat-due-queue`**. SW **`lingolift-v60-repeat-due-queue`**. Supersedes **v20.1** “full pool” Repeat behavior.
 
 **v21.8:** **[`js/supabase-config.js`](js/supabase-config.js)** picks **`url`** / **`anonKey`** from **`__LINGOLIFT_SUPABASE__`** only when that value is **not** a **`YOUR_*`** placeholder; otherwise uses **`FALLBACK_*`** (avoids example globals wiping real defaults). **`index.html`** **`app.js?v=59-supabase-pick`**. SW **`lingolift-v59-supabase-pick`**.
 
@@ -37,7 +39,7 @@
 
 **v20.2:** If Supabase has **no `srs_step` column** (migration not run), **`js/data-store.js`** retries **fetch / insert / update / outbox / legacy migrate** without that field and keeps **`srsStep` client-only** for the tab session. Avoids permanent **Sync error** until SQL is applied. SW **`lingolift-v41-srs-sync-fallback`**.
 
-**v20.1:** **Repeat** queues **all** cards matching **Group for review** (not only due-by-midnight). Dashboard **Due today** count shows **`dueToday / poolTotal`** (`progressDueInPool`); **due-brain** fill uses the same ratio (equals **1** when every card in the pool is due today). Removed **`lingolift-day-stats`** / **`getDayStats`**. Stylesheet **`?v=40-full-pool-queue`**.
+**v20.1:** **Repeat** queued **all** cards in the group filter (superseded by **v21.10** — due-only queue). Dashboard showed **`due / pool`**. Removed **`lingolift-day-stats`** / **`getDayStats`**. Stylesheet **`?v=40-full-pool-queue`**.
 
 **v20.0:** **SRS ladder** in **`js/data-store.js`** / **`js/app.js`**: **Hard** → next review **+15 min** and **`srs_step` → 0**; **Easy** uses next delay from **`[2h, 6h, 24h, 72h, 1w]`** by current step, then increments step (capped at **1w** repeat). **`updateCardSrs`** replaces **`updateCardNextReview`**; outbox **`update`** includes **`srs_step`**. Supabase column **`srs_step`** — new installs in [sql/cards.sql](sql/cards.sql); existing DBs run [sql/add_srs_step.sql](sql/add_srs_step.sql). **Due-brain** (`#due-brain-visual`): class **`due-brain-visual--drained`** when there are **no due cards** today (after `renderDashboard`); CSS disables liquid shimmer, slightly longer emptying transition, dimmer outline. Stylesheet **`?v=39-srs-brain`**.
 
@@ -51,7 +53,7 @@
 
 **v19.1:** **My deck** and **New group** row use the same disclosure pattern as **How to use**: `max-height` + opacity transitions (not `hidden`); **How to** panel gets a light open-state border. **`.select-lang`** uses slightly longer easing on border/shadow/background.
 
-**v19:** **Word groups** (`group_label` in Supabase, `groupLabel` on client cards). Duplicate words are allowed in **different** groups only (`isWordDuplicateInGroup`). **Group for review** (`#select-study-group`) filters the study pool and dashboard counts; choice persisted in `localStorage` key `lingolift-study-group-filter` (`''` = all groups, `__none__` = ungrouped only). **v20.1:** **Repeat** uses the full filtered list, not only due-today cards. **Add card** form: group `<select>` (`#select-add-group`) with **New group…** (`__new__`) + `#input-new-group-name`. **My deck** collapsible panel: search, group filter, list with **Edit** / **Delete**; edits use `updateCardFields`, deletes use `deleteCard` with outbox ops `update_fields` and `delete`. **Language pair** for GTX (`#select-lang-source` / `#select-lang-target`) persisted in `localStorage` key `lingolift-lang-pair`. **`<datalist id="datalist-words">`** on `#input-word` suggests existing words in the **currently selected add-group** (including typed new group name). **Study swipe** (touch only): after answer is shown, horizontal swipe on `#study-card` triggers Hard (left) / Easy (right); disabled when `prefers-reduced-motion: reduce`. **SQL:** new installs include `group_label` in [sql/cards.sql](sql/cards.sql); existing DBs run [sql/add_group_label.sql](sql/add_group_label.sql). RLS unchanged (`user_id` policies already cover update/delete).
+**v19:** **Word groups** (`group_label` in Supabase, `groupLabel` on client cards). Duplicate words are allowed in **different** groups only (`isWordDuplicateInGroup`). **Group for review** (`#select-study-group`) filters the study pool and dashboard counts; choice persisted in `localStorage` key `lingolift-study-group-filter` (`''` = all groups, `__none__` = ungrouped only). **v21.10:** **Repeat** uses **due** cards in that filter only. **Add card** form: group `<select>` (`#select-add-group`) with **New group…** (`__new__`) + `#input-new-group-name`. **My deck** collapsible panel: search, group filter, list with **Edit** / **Delete**; edits use `updateCardFields`, deletes use `deleteCard` with outbox ops `update_fields` and `delete`. **Language pair** for GTX (`#select-lang-source` / `#select-lang-target`) persisted in `localStorage` key `lingolift-lang-pair`. **`<datalist id="datalist-words">`** on `#input-word` suggests existing words in the **currently selected add-group** (including typed new group name). **Study swipe** (touch only): after answer is shown, horizontal swipe on `#study-card` triggers Hard (left) / Easy (right); disabled when `prefers-reduced-motion: reduce`. **SQL:** new installs include `group_label` in [sql/cards.sql](sql/cards.sql); existing DBs run [sql/add_group_label.sql](sql/add_group_label.sql). RLS unchanged (`user_id` policies already cover update/delete).
 
 **v18 (SW hard reset):** Cache name bumps; **`install`** calls **`self.skipWaiting()`** first; **`activate`** deletes **all** caches whose name is not the current **`CACHE`**, then **`clients.claim()`**.
 
@@ -102,7 +104,7 @@
 ## Spaced repetition
 
 - **Intervals** (`data-store.js`): **`HARD_DELAY_MS`** (**15 minutes**); **Easy** steps **`EASY_INTERVALS_MS`**: **2h → 6h → 24h → 72h → 1 week** (then **1 week** again). **`computeNextSrs(hard, srsStep)`** / **`updateCardSrs`**. Client field **`srsStep`** (0..4): index of the next Easy delay; Hard resets to **0**.
-- **Due now** (`app.js`): **`nextReview <= Date.now()`** (`dueNowQueue`). **v20.1:** **Repeat** shuffles and reviews the **entire filtered pool** (same group filter). Header count **`dueNow / poolTotal`**; due-brain fill same ratio. **v19:** filter is **Group for review** (all / ungrouped / one named group).
+- **Due now** (`app.js`): **`nextReview <= Date.now()`** (`dueNowQueue`). **v21.10:** **Repeat** queues only **due** cards in the **Group for review** filter (same set as the dashboard numerator). Header **`dueNow / poolTotal`**; due-brain fill **`due / pool`**. **v19:** filter is **Group for review** (all / ungrouped / one named group).
 
 ---
 

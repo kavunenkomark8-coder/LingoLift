@@ -1,4 +1,4 @@
-const CACHE = 'lingolift-v59-supabase-pick';
+const CACHE = 'lingolift-v60-repeat-due-queue';
 
 const ASSETS = [
   './',
